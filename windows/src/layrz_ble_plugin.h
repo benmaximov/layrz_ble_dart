@@ -55,7 +55,18 @@ namespace layrz_ble
         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
       );
 
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> methodChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> checkCapabilitiesChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> startScanChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> stopScanChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> connectChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> disconnectChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> discoverServicesChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> setMtuChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> writeCharacteristicChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> readCharacteristicChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> startNotifyChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> stopNotifyChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> eventsChannel;
       static std::string filteredDeviceId;
 
       std::unordered_map<std::string, BleService> servicesAndCharacteristics{};

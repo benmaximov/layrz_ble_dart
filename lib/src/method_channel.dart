@@ -202,8 +202,6 @@ class LayrzBleNative extends LayrzBlePlatform {
       return false;
     }
 
-    debugPrint("---------------------> result: $result - $payload");
-
     return result;
   }
 
