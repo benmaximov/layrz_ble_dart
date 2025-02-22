@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2
+
+- Added try/catch around the read and write characteristic functions to prevent crashes when the device is disconnected
+
 ## 1.2.1
 
 - Added txPower to the data that can be received from the device

@@ -779,15 +779,20 @@ namespace layrz_ble {
       co_return;
     }
 
-    auto data = co_await characteristic.ReadValueAsync();
-    if (data.Status() != GattCommunicationStatus::Success) {
+    try {
+      auto data = co_await characteristic.ReadValueAsync();
+      if (data.Status() != GattCommunicationStatus::Success) {
+        Log("Failed to read characteristic value");
+        result->Success(flutter::EncodableValue());
+        co_return;
+      }
+
+      auto value = IBufferToVector(data.Value());
+      result->Success(flutter::EncodableValue(value));
+    } catch (...) {
       Log("Failed to read characteristic value");
       result->Success(flutter::EncodableValue());
-      co_return;
     }
-
-    auto value = IBufferToVector(data.Value());
-    result->Success(flutter::EncodableValue(value));
   } // readCharacteristic
 
   /// @brief Write to the characteristic
@@ -807,6 +812,14 @@ namespace layrz_ble {
     auto device = connectedDevice.get()->Device();
     if (!device) {
       Log("Device not found");
+      result->Success(flutter::EncodableValue(false));
+      co_return;
+    }
+
+    auto connStatus = device->ConnectionStatus();
+    if (connStatus != BluetoothConnectionStatus::Connected) {
+      Log("Device not connected");
+      disconnect(method_call, std::move(result));
       result->Success(flutter::EncodableValue(false));
       co_return;
     }
@@ -879,17 +892,22 @@ namespace layrz_ble {
 
     // Log("Writing to characteristic " + characteristicUuid + " from service " + serviceUuid);
     auto writeType = withResponse ? GattWriteOption::WriteWithResponse : GattWriteOption::WriteWithoutResponse;
-    auto status = co_await characteristic.WriteValueAsync(VectorToIBuffer(payload), writeType);
-    if (status != GattCommunicationStatus::Success) {
+    try {
+      auto status = co_await characteristic.WriteValueAsync(VectorToIBuffer(payload), writeType);
+      if (status != GattCommunicationStatus::Success) {
+        Log("Failed to write characteristic value");
+        result->Success(flutter::EncodableValue(false));
+        co_return;
+      }
+
+      Log("Successfully wrote to characteristic " + characteristicUuid + " from service " + serviceUuid);
+      result->Success(flutter::EncodableValue(true));
+      co_return;
+    } catch (...) {
       Log("Failed to write characteristic value");
       result->Success(flutter::EncodableValue(false));
       co_return;
     }
-
-    Log("Successfully wrote to characteristic " + characteristicUuid + " from service " + serviceUuid);
-    result->Success(flutter::EncodableValue(true));
-    co_return;
-
   } // writeCharacteristic
 
   /// @brief Start notifications for the characteristic
