@@ -93,11 +93,6 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                 return
             }
 
-            if (lastOperation != LastOperation.SCAN) {
-                Log.d(TAG, "Not scanning")
-                return
-            }
-
             val device = result.device
             val macAddress = device.address.uppercase()
 
@@ -170,6 +165,8 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             if (connectedDevice == null) return
             if (lastOperation != LastOperation.CONNECT) {
                 if (status == BluetoothGatt.STATE_DISCONNECTED) {
+                    Log.d(TAG, "Disconnected")
+                    gatt?.disconnect()
                     connectedDevice = null
                     Handler(Looper.getMainLooper()).post {
                         eventsChannel.invokeMethod(
@@ -633,7 +630,8 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         connectedDevice = devices[searchingMacAddress!!]!!
         connectResult = result
         lastOperation = LastOperation.CONNECT
-        gatt = connectedDevice!!.connectGatt(context, true, gattCallback)
+        gatt = connectedDevice!!.connectGatt(context, false, gattCallback)
+        gatt!!.connect()
     }
 
     /* Disconnects from a BLE device */
