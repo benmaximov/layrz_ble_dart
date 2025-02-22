@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.3
+
+- Segmented MethodChannel's in different channels to prevent overloading.
+
 ## 1.2.2
 
 - Added try/catch around the read and write characteristic functions to prevent crashes when the device is disconnected
