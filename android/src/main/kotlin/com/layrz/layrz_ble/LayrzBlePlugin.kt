@@ -168,17 +168,15 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                     Log.d(TAG, "Disconnected")
                     gatt?.disconnect()
                     connectedDevice = null
+                    servicesAndCharacteristics.clear()
                     Handler(Looper.getMainLooper()).post {
                         eventsChannel.invokeMethod(
                             "onEvent",
                             "DISCONNECTED"
                         )
                     }
+                    return
                 }
-
-                coroutine?.cancel()
-                coroutine = null
-                return
             }
 
             if (newState == android.bluetooth.BluetoothProfile.STATE_CONNECTED) {
@@ -701,6 +699,11 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         setMtuResult = result
         lastOperation = LastOperation.SET_MTU
         gatt!!.requestMtu(newMtu)
+
+        spawnTimeout(
+            operation = LastOperation.SET_MTU,
+            timeoutSeconds = 10,
+        )
     }
 
     /* Sends a payload to a BLE device */
