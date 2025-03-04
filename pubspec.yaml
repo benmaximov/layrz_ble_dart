@@ -50,8 +50,10 @@ flutter:
         pluginClass: LayrzBlePlugin
       ios:
         pluginClass: LayrzBlePlugin
+        sharedDarwinSource: true
       macos:
         pluginClass: LayrzBlePlugin
+        sharedDarwinSource: true
       windows:
         pluginClass: LayrzBlePluginCApi
       web:
