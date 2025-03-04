@@ -18,10 +18,8 @@ A new Flutter plugin project.
 
   s.osx.dependency 'FlutterMacOS'
   s.osx.deployment_target = '11.0'
+
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
 
-  s.resource_bundles = {
-    'layrz_ble_privacy' => ['layrz_ble/Sources/layrz_ble/PrivacyInfo.xcprivacy']
-  }
   s.swift_version = '5.0'
 end
