@@ -39,3 +39,8 @@ build/
 **/*/flutter/ephemeral/*
 **/*/Flutter/ephemeral/*
 **/*/Flutter/GeneratedPluginRegistrant.*
+
+.vscode/settings.json
+.vscode/c_cpp_properties.json
+
+darwin/layrz_ble/.swiftpm/

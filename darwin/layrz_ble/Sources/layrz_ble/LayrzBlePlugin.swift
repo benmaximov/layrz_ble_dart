@@ -1,9 +1,24 @@
-import Cocoa
-import FlutterMacOS
+#if os(iOS)
+    import Flutter
+#elseif os(macOS)
+    import FlutterMacOS
+#endif
 import CoreBluetooth
 
 public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, CBPeripheralDelegate {
-    static var channel: FlutterMethodChannel?
+    static var checkCapabilitiesChannel: FlutterMethodChannel?
+    static var startScanChannel: FlutterMethodChannel?
+    static var stopScanChannel: FlutterMethodChannel?
+    static var connectChannel: FlutterMethodChannel?
+    static var disconnectChannel: FlutterMethodChannel?
+    static var discoverServicesChannel: FlutterMethodChannel?
+    static var setMtuChannel: FlutterMethodChannel?
+    static var writeCharacteristicChannel: FlutterMethodChannel?
+    static var readCharacteristicChannel: FlutterMethodChannel?
+    static var startNotifyChannel: FlutterMethodChannel?
+    static var stopNotifyChannel: FlutterMethodChannel?
+    static var eventsChannel: FlutterMethodChannel?
+
     var lastResult: FlutterResult?
     var centralManager: CBCentralManager!
     var discoveredPeripherals: [CBPeripheral] = []
@@ -20,9 +35,39 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
     }
     
     public static func register(with registrar: FlutterPluginRegistrar) {
-        channel = FlutterMethodChannel(name: "com.layrz.layrz_ble", binaryMessenger: registrar.messenger)
         let instance = LayrzBlePlugin()
-        registrar.addMethodCallDelegate(instance, channel: channel!)
+
+        #if os(iOS)
+            let messenger = registrar.messenger()
+        #else
+            let messenger = registrar.messenger
+        #endif
+
+        checkCapabilitiesChannel = FlutterMethodChannel(name: "com.layrz.ble.checkCapabilities", binaryMessenger: messenger)
+        startScanChannel = FlutterMethodChannel(name: "com.layrz.ble.startScan", binaryMessenger: messenger)
+        stopScanChannel = FlutterMethodChannel(name: "com.layrz.ble.stopScan", binaryMessenger: messenger)
+        connectChannel = FlutterMethodChannel(name: "com.layrz.ble.connect", binaryMessenger: messenger)
+        disconnectChannel = FlutterMethodChannel(name: "com.layrz.ble.disconnect", binaryMessenger: messenger)
+        discoverServicesChannel = FlutterMethodChannel(name: "com.layrz.ble.discoverServices", binaryMessenger: messenger)
+        setMtuChannel = FlutterMethodChannel(name: "com.layrz.ble.setMtu", binaryMessenger: messenger)
+        writeCharacteristicChannel = FlutterMethodChannel(name: "com.layrz.ble.writeCharacteristic", binaryMessenger: messenger)
+        readCharacteristicChannel = FlutterMethodChannel(name: "com.layrz.ble.readCharacteristic", binaryMessenger: messenger)
+        startNotifyChannel = FlutterMethodChannel(name: "com.layrz.ble.startNotify", binaryMessenger: messenger)
+        stopNotifyChannel = FlutterMethodChannel(name: "com.layrz.ble.stopNotify", binaryMessenger: messenger)
+        eventsChannel = FlutterMethodChannel(name: "com.layrz.ble.events", binaryMessenger: messenger)
+
+        registrar.addMethodCallDelegate(instance, channel: checkCapabilitiesChannel!)
+        registrar.addMethodCallDelegate(instance, channel: startScanChannel!)
+        registrar.addMethodCallDelegate(instance, channel: stopScanChannel!)
+        registrar.addMethodCallDelegate(instance, channel: connectChannel!)
+        registrar.addMethodCallDelegate(instance, channel: disconnectChannel!)
+        registrar.addMethodCallDelegate(instance, channel: discoverServicesChannel!)
+        registrar.addMethodCallDelegate(instance, channel: setMtuChannel!)
+        registrar.addMethodCallDelegate(instance, channel: writeCharacteristicChannel!)
+        registrar.addMethodCallDelegate(instance, channel: readCharacteristicChannel!)
+        registrar.addMethodCallDelegate(instance, channel: startNotifyChannel!)
+        registrar.addMethodCallDelegate(instance, channel: stopNotifyChannel!)
+        registrar.addMethodCallDelegate(instance, channel: eventsChannel!)
     }
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -63,7 +108,6 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 "bluetoothPermission": auth == .allowedAlways,
                 "bluetoothAdminOrScanPermission": auth == .allowedAlways,
                 "bluetoothConnectPermission": auth == .allowedAlways
-                
             ])
         }
         
@@ -341,7 +385,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                     "value": characteristic.value
                 ]
                 
-                LayrzBlePlugin.channel!.invokeMethod("onNotify", arguments: notification)
+                LayrzBlePlugin.eventsChannel!.invokeMethod("onNotify", arguments: notification)
             } else {
                 lastResult?(characteristic.value)
                 lastResult = nil
@@ -420,7 +464,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
             let uuid = peripheral.identifier.uuidString.uppercased()
             log("Failed to connect to \(uuid) - \(error?.localizedDescription ?? "")")
             connectedPeripheral = nil
-            LayrzBlePlugin.channel?.invokeMethod("onEvent", arguments: "DISCONNECTED")
+            LayrzBlePlugin.eventsChannel?.invokeMethod("onEvent", arguments: "DISCONNECTED")
             lastResult?(false)
         }
         
@@ -428,7 +472,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
             let uuid = peripheral.identifier.uuidString.uppercased()
             log("Disconnected from \(uuid) - \(error?.localizedDescription ?? "")")
             connectedPeripheral = nil
-            LayrzBlePlugin.channel?.invokeMethod("onEvent", arguments: "DISCONNECTED")
+            LayrzBlePlugin.eventsChannel?.invokeMethod("onEvent", arguments: "DISCONNECTED")
             lastResult?(false)
         }
         
@@ -436,11 +480,8 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
             let name = peripheral.name
             let uuid = peripheral.identifier.uuidString.uppercased()
             
-            if (devices[uuid] != nil) {
-                return
-            }
-            
             if (filteredUuid != nil && uuid != filteredUuid) {
+                // log("Device detected but rejected due to MAC Address filter")
                 return
             }
             
@@ -474,7 +515,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
             }
             
             devices.updateValue(peripheral, forKey: uuid)
-            LayrzBlePlugin.channel!.invokeMethod("onScan", arguments: [
+            LayrzBlePlugin.eventsChannel?.invokeMethod("onScan", arguments: [
                 "name": name ?? "Unknown",
                 "macAddress": uuid,
                 "rssi": RSSI,
@@ -488,12 +529,12 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
             if (isScanning) {
                 centralManager.stopScan()
                 isScanning = false
-                LayrzBlePlugin.channel?.invokeMethod("onEvent", arguments: "SCAN_STOPPED")
+                LayrzBlePlugin.eventsChannel?.invokeMethod("onEvent", arguments: "SCAN_STOPPED")
             }
             
             peripheral.delegate = self
             connectedPeripheral = peripheral
-            LayrzBlePlugin.channel?.invokeMethod("onEvent", arguments: "CONNECTED")
+            LayrzBlePlugin.eventsChannel?.invokeMethod("onEvent", arguments: "CONNECTED")
             peripheral.discoverServices(nil)
         }
         
@@ -503,7 +544,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 log("Bluetooth is turned on")
             case .poweredOff:
                 if (isScanning) {
-                    LayrzBlePlugin.channel?.invokeMethod("onEvent", arguments: "SCAN_STOPPED")
+                    LayrzBlePlugin.eventsChannel?.invokeMethod("onEvent", arguments: "SCAN_STOPPED")
                     isScanning = false
                 }
                 log("Bluetooth is turned off")
@@ -517,7 +558,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
         }
         
         private func log(_ message: String) {
-            NSLog("LayrzBlePlugin/macOS: \(message)")
+            NSLog("LayrzBlePlugin/darwin: \(message)")
         }
     
     private func standarizeServiceUuid(_ uuid: CBUUID) -> Int {

@@ -1,6 +1,18 @@
 #include "layrz_ble_plugin.h"
 namespace layrz_ble {
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::methodChannel = nullptr;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::checkCapabilitiesChannel = nullptr;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::startScanChannel = nullptr;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::stopScanChannel = nullptr;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::connectChannel = nullptr;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::disconnectChannel = nullptr;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::discoverServicesChannel = nullptr;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::setMtuChannel = nullptr;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::writeCharacteristicChannel = nullptr;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::readCharacteristicChannel = nullptr;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::startNotifyChannel = nullptr;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::stopNotifyChannel = nullptr;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::eventsChannel = nullptr;
+
   std::string LayrzBlePlugin::filteredDeviceId = std::string("");
   std::unique_ptr<BleScanResult> LayrzBlePlugin::connectedDevice = nullptr;
 
@@ -9,13 +21,99 @@ namespace layrz_ble {
   /// @return void
   void LayrzBlePlugin::RegisterWithRegistrar(flutter::PluginRegistrarWindows *registrar) {
     auto plugin = std::make_unique<LayrzBlePlugin>(registrar);
-    methodChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(registrar->messenger(), "com.layrz.layrz_ble", &flutter::StandardMethodCodec::GetInstance());
-
-    methodChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) 
-      {
-        plugin_pointer->HandleMethodCall(call, std::move(result));
-      }
+    checkCapabilitiesChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      registrar->messenger(),
+      "com.layrz.ble.checkCapabilities",
+      &flutter::StandardMethodCodec::GetInstance()
     );
+    startScanChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      registrar->messenger(),
+      "com.layrz.ble.startScan",
+      &flutter::StandardMethodCodec::GetInstance()
+    );
+    stopScanChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      registrar->messenger(),
+      "com.layrz.ble.stopScan",
+      &flutter::StandardMethodCodec::GetInstance()
+    );
+    connectChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      registrar->messenger(),
+      "com.layrz.ble.connect",
+      &flutter::StandardMethodCodec::GetInstance()
+    );
+    disconnectChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      registrar->messenger(),
+      "com.layrz.ble.disconnect",
+      &flutter::StandardMethodCodec::GetInstance()
+    );
+    discoverServicesChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      registrar->messenger(),
+      "com.layrz.ble.discoverServices",
+      &flutter::StandardMethodCodec::GetInstance()
+    );
+    setMtuChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      registrar->messenger(),
+      "com.layrz.ble.setMtu",
+      &flutter::StandardMethodCodec::GetInstance()
+    );
+    writeCharacteristicChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      registrar->messenger(),
+      "com.layrz.ble.writeCharacteristic",
+      &flutter::StandardMethodCodec::GetInstance()
+    );
+    readCharacteristicChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      registrar->messenger(),
+      "com.layrz.ble.readCharacteristic",
+      &flutter::StandardMethodCodec::GetInstance()
+    );
+    startNotifyChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      registrar->messenger(),
+      "com.layrz.ble.startNotify",
+      &flutter::StandardMethodCodec::GetInstance()
+    );
+    stopNotifyChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      registrar->messenger(),
+      "com.layrz.ble.stopNotify",
+      &flutter::StandardMethodCodec::GetInstance()
+    );
+    eventsChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      registrar->messenger(),
+      "com.layrz.ble.events",
+      &flutter::StandardMethodCodec::GetInstance()
+    );
+    checkCapabilitiesChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
+      plugin_pointer->HandleMethodCall(call, std::move(result));
+    });
+    startScanChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
+      plugin_pointer->HandleMethodCall(call, std::move(result));
+    });
+    stopScanChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
+      plugin_pointer->HandleMethodCall(call, std::move(result));
+    });
+    connectChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
+      plugin_pointer->HandleMethodCall(call, std::move(result));
+    });
+    disconnectChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
+      plugin_pointer->HandleMethodCall(call, std::move(result));
+    });
+    discoverServicesChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
+      plugin_pointer->HandleMethodCall(call, std::move(result));
+    });
+    setMtuChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
+      plugin_pointer->HandleMethodCall(call, std::move(result));
+    });
+    writeCharacteristicChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
+      plugin_pointer->HandleMethodCall(call, std::move(result));
+    });
+    readCharacteristicChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
+      plugin_pointer->HandleMethodCall(call, std::move(result));
+    });
+    startNotifyChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
+      plugin_pointer->HandleMethodCall(call, std::move(result));
+    });
+    stopNotifyChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
+      plugin_pointer->HandleMethodCall(call, std::move(result));
+    });
 
     registrar->AddPlugin(std::move(plugin));
   } // RegisterWithRegistrar
@@ -429,9 +527,9 @@ namespace layrz_ble {
       response[flutter::EncodableValue("serviceData")] = flutter::EncodableValue(serviceDataList);
     }
     
-    if(methodChannel != nullptr) {
+    if(eventsChannel != nullptr) {
       uiThreadHandler_.Post([this, response]() {
-        methodChannel->InvokeMethod(
+        eventsChannel->InvokeMethod(
           "onScan",
           std::make_unique<flutter::EncodableValue>(response)
         );
@@ -475,8 +573,8 @@ namespace layrz_ble {
       leScanner.Stop();
       leScanner = nullptr;
 
-      if (methodChannel != nullptr) {
-        methodChannel->InvokeMethod(
+      if (eventsChannel != nullptr) {
+        eventsChannel->InvokeMethod(
           "onEvent",
           std::make_unique<flutter::EncodableValue>("SCAN_STOPPED")
         );
@@ -523,9 +621,9 @@ namespace layrz_ble {
     connectedDevice = std::make_unique<BleScanResult>(device);
     result->Success(flutter::EncodableValue(true));
 
-    if (methodChannel != nullptr) {
+    if (eventsChannel != nullptr) {
       uiThreadHandler_.Post([this]() {
-        methodChannel->InvokeMethod(
+        eventsChannel->InvokeMethod(
           "onEvent",
           std::make_unique<flutter::EncodableValue>("CONNECTED")
         ); 
@@ -562,8 +660,8 @@ namespace layrz_ble {
     servicesAndCharacteristics.clear();
 
     result->Success(flutter::EncodableValue(true));
-    if (methodChannel != nullptr) {
-      methodChannel->InvokeMethod(
+    if (eventsChannel != nullptr) {
+      eventsChannel->InvokeMethod(
         "onEvent",
         std::make_unique<flutter::EncodableValue>("DISCONNECTED")
       ); 
@@ -1127,9 +1225,9 @@ namespace layrz_ble {
     response[flutter::EncodableValue("characteristicUuid")] = flutter::EncodableValue(characteristicUuid);
     response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
 
-    if (methodChannel != nullptr) {
+    if (eventsChannel != nullptr) {
       uiThreadHandler_.Post([this, response]() {
-        methodChannel->InvokeMethod(
+        eventsChannel->InvokeMethod(
           "onNotify",
           std::make_unique<flutter::EncodableValue>(response)
         );
@@ -1146,18 +1244,18 @@ namespace layrz_ble {
       connectedDevice = nullptr;
       servicesNotifying.clear();
 
-      if (methodChannel != nullptr) {
+      if (eventsChannel != nullptr) {
         uiThreadHandler_.Post([this]() {
-          methodChannel->InvokeMethod(
+          eventsChannel->InvokeMethod(
             "onEvent",
             std::make_unique<flutter::EncodableValue>("DISCONNECTED")
           );
         });
       }
     } else if (status == BluetoothConnectionStatus::Connected) {
-      if (methodChannel != nullptr) {
+      if (eventsChannel != nullptr) {
         uiThreadHandler_.Post([this]() {
-          methodChannel->InvokeMethod(
+          eventsChannel->InvokeMethod(
             "onEvent",
             std::make_unique<flutter::EncodableValue>("CONNECTED")
           );

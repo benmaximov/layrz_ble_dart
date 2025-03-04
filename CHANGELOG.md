@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.3
+
+- Segmented MethodChannel's in different channels to prevent overloading.
+- Fixed an issue on Android where the device would not disconnect properly. Now, when a disconnection is detected, the gatt will be closed.
+- Unified iOS and macOS to use the same codebase (darwin).
+
 ## 1.2.2
 
 - Added try/catch around the read and write characteristic functions to prevent crashes when the device is disconnected

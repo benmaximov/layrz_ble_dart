@@ -14,7 +14,7 @@ class LayrzBleNative extends LayrzBlePlatform {
   }
 
   LayrzBleNative() {
-    methodChannel.setMethodCallHandler((call) async {
+    eventsChannel.setMethodCallHandler((call) async {
       switch (call.method) {
         case 'onScan':
           try {
@@ -71,8 +71,18 @@ class LayrzBleNative extends LayrzBlePlatform {
     });
   }
 
-  @visibleForTesting
-  final methodChannel = const MethodChannel('com.layrz.layrz_ble');
+  final checkCapabilitiesChannel = const MethodChannel('com.layrz.ble.checkCapabilities');
+  final startScanChannel = const MethodChannel('com.layrz.ble.startScan');
+  final stopScanChannel = const MethodChannel('com.layrz.ble.stopScan');
+  final connectChannel = const MethodChannel('com.layrz.ble.connect');
+  final disconnectChannel = const MethodChannel('com.layrz.ble.disconnect');
+  final discoverServicesChannel = const MethodChannel('com.layrz.ble.discoverServices');
+  final setMtuChannel = const MethodChannel('com.layrz.ble.setMtu');
+  final writeCharacteristicChannel = const MethodChannel('com.layrz.ble.writeCharacteristic');
+  final readCharacteristicChannel = const MethodChannel('com.layrz.ble.readCharacteristic');
+  final startNotifyChannel = const MethodChannel('com.layrz.ble.startNotify');
+  final stopNotifyChannel = const MethodChannel('com.layrz.ble.stopNotify');
+  final eventsChannel = const MethodChannel('com.layrz.ble.events');
 
   final StreamController<BleDevice> _scanController = StreamController<BleDevice>.broadcast();
   final StreamController<BleEvent> _eventController = StreamController<BleEvent>.broadcast();
@@ -89,20 +99,18 @@ class LayrzBleNative extends LayrzBlePlatform {
   Stream<BleCharacteristicNotification> get onNotify => _notifyController.stream;
 
   @override
-  Future<bool?> startScan({String? macAddress, List<String>? servicesUuids}) => methodChannel.invokeMethod<bool>(
+  Future<bool?> startScan({String? macAddress, List<String>? servicesUuids}) => startScanChannel.invokeMethod<bool>(
         'startScan',
-        {
-          if (macAddress != null) 'macAddress': macAddress,
-        },
+        {if (macAddress != null) 'macAddress': macAddress},
       );
 
   @override
-  Future<bool?> stopScan() => methodChannel.invokeMethod<bool>('stopScan');
+  Future<bool?> stopScan() => stopScanChannel.invokeMethod<bool>('stopScan');
 
   @override
   Future<BleCapabilities> checkCapabilities() async {
     debugPrint("Calling");
-    final result = await methodChannel.invokeMethod<Map>('checkCapabilities');
+    final result = await checkCapabilitiesChannel.invokeMethod<Map>('checkCapabilities');
     if (result == null) {
       log('Error checking BleCapabilities from native side');
       return BleCapabilities(
@@ -127,20 +135,20 @@ class LayrzBleNative extends LayrzBlePlatform {
   }
 
   @override
-  Future<int?> setMtu({required int newMtu}) => methodChannel.invokeMethod<int>('setMtu', newMtu);
+  Future<int?> setMtu({required int newMtu}) => setMtuChannel.invokeMethod<int>('setMtu', newMtu);
 
   @override
-  Future<bool?> connect({required String macAddress}) => methodChannel.invokeMethod<bool>('connect', macAddress);
+  Future<bool?> connect({required String macAddress}) => connectChannel.invokeMethod<bool>('connect', macAddress);
 
   @override
-  Future<bool?> disconnect() => methodChannel.invokeMethod<bool>('disconnect');
+  Future<bool?> disconnect() => disconnectChannel.invokeMethod<bool>('disconnect');
 
   @override
   Future<List<BleService>?> discoverServices({
     /// [timeout] is the duration to wait for the services to be discovered.
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    final result = await methodChannel.invokeMethod<List>('discoverServices', {
+    final result = await discoverServicesChannel.invokeMethod<List>('discoverServices', {
       'timeout': timeout.inSeconds,
     });
     if (result == null) {
@@ -181,7 +189,7 @@ class LayrzBleNative extends LayrzBlePlatform {
     Duration timeout = const Duration(seconds: 30),
     required bool withResponse,
   }) async {
-    final result = await methodChannel.invokeMethod<bool>('writeCharacteristic', <String, dynamic>{
+    final result = await writeCharacteristicChannel.invokeMethod<bool>('writeCharacteristic', <String, dynamic>{
       'serviceUuid': serviceUuid,
       'characteristicUuid': characteristicUuid,
       'payload': payload,
@@ -203,7 +211,7 @@ class LayrzBleNative extends LayrzBlePlatform {
     required String characteristicUuid,
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    final result = await methodChannel.invokeMethod<Uint8List>('readCharacteristic', <String, dynamic>{
+    final result = await readCharacteristicChannel.invokeMethod<Uint8List>('readCharacteristic', <String, dynamic>{
       'serviceUuid': serviceUuid,
       'characteristicUuid': characteristicUuid,
       'timeout': timeout.inSeconds,
@@ -222,7 +230,7 @@ class LayrzBleNative extends LayrzBlePlatform {
     required String serviceUuid,
     required String characteristicUuid,
   }) {
-    return methodChannel.invokeMethod<bool>('startNotify', <String, String>{
+    return startNotifyChannel.invokeMethod<bool>('startNotify', <String, String>{
       'serviceUuid': serviceUuid,
       'characteristicUuid': characteristicUuid,
     });
@@ -233,7 +241,7 @@ class LayrzBleNative extends LayrzBlePlatform {
     required String serviceUuid,
     required String characteristicUuid,
   }) {
-    return methodChannel.invokeMethod<bool>('stopNotify', <String, String>{
+    return stopNotifyChannel.invokeMethod<bool>('stopNotify', <String, String>{
       'serviceUuid': serviceUuid,
       'characteristicUuid': characteristicUuid,
     });
