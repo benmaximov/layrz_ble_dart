@@ -4,6 +4,7 @@
 
 - Segmented MethodChannel's in different channels to prevent overloading.
 - Fixed an issue on Android where the device would not disconnect properly. Now, when a disconnection is detected, the gatt will be closed.
+- Unified iOS and macOS to use the same codebase (darwin).
 
 ## 1.2.2
 

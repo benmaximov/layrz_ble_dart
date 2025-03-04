@@ -480,11 +480,8 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
             let name = peripheral.name
             let uuid = peripheral.identifier.uuidString.uppercased()
             
-            if (devices[uuid] != nil) {
-                return
-            }
-            
             if (filteredUuid != nil && uuid != filteredUuid) {
+                // log("Device detected but rejected due to MAC Address filter")
                 return
             }
             
@@ -561,7 +558,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
         }
         
         private func log(_ message: String) {
-            NSLog("LayrzBlePlugin/macOS: \(message)")
+            NSLog("LayrzBlePlugin/darwin: \(message)")
         }
     
     private func standarizeServiceUuid(_ uuid: CBUUID) -> Int {
