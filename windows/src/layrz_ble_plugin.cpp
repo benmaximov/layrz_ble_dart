@@ -1,17 +1,7 @@
 #include "layrz_ble_plugin.h"
-namespace layrz_ble {
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::checkCapabilitiesChannel = nullptr;
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::startScanChannel = nullptr;
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::stopScanChannel = nullptr;
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::connectChannel = nullptr;
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::disconnectChannel = nullptr;
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::discoverServicesChannel = nullptr;
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::setMtuChannel = nullptr;
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::writeCharacteristicChannel = nullptr;
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::readCharacteristicChannel = nullptr;
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::startNotifyChannel = nullptr;
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::stopNotifyChannel = nullptr;
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>LayrzBlePlugin::eventsChannel = nullptr;
+namespace layrz_ble
+{
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> LayrzBlePlugin::methodChannel = nullptr;
 
   std::string LayrzBlePlugin::filteredDeviceId = std::string("");
   std::unique_ptr<BleScanResult> LayrzBlePlugin::connectedDevice = nullptr;
@@ -19,108 +9,24 @@ namespace layrz_ble {
   /// @brief Register the plugin with the registrar
   /// @param registrar
   /// @return void
-  void LayrzBlePlugin::RegisterWithRegistrar(flutter::PluginRegistrarWindows *registrar) {
+  void LayrzBlePlugin::RegisterWithRegistrar(flutter::PluginRegistrarWindows *registrar)
+  {
     auto plugin = std::make_unique<LayrzBlePlugin>(registrar);
-    checkCapabilitiesChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(),
-      "com.layrz.ble.checkCapabilities",
-      &flutter::StandardMethodCodec::GetInstance()
-    );
-    startScanChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(),
-      "com.layrz.ble.startScan",
-      &flutter::StandardMethodCodec::GetInstance()
-    );
-    stopScanChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(),
-      "com.layrz.ble.stopScan",
-      &flutter::StandardMethodCodec::GetInstance()
-    );
-    connectChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(),
-      "com.layrz.ble.connect",
-      &flutter::StandardMethodCodec::GetInstance()
-    );
-    disconnectChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(),
-      "com.layrz.ble.disconnect",
-      &flutter::StandardMethodCodec::GetInstance()
-    );
-    discoverServicesChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(),
-      "com.layrz.ble.discoverServices",
-      &flutter::StandardMethodCodec::GetInstance()
-    );
-    setMtuChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(),
-      "com.layrz.ble.setMtu",
-      &flutter::StandardMethodCodec::GetInstance()
-    );
-    writeCharacteristicChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(),
-      "com.layrz.ble.writeCharacteristic",
-      &flutter::StandardMethodCodec::GetInstance()
-    );
-    readCharacteristicChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(),
-      "com.layrz.ble.readCharacteristic",
-      &flutter::StandardMethodCodec::GetInstance()
-    );
-    startNotifyChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(),
-      "com.layrz.ble.startNotify",
-      &flutter::StandardMethodCodec::GetInstance()
-    );
-    stopNotifyChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(),
-      "com.layrz.ble.stopNotify",
-      &flutter::StandardMethodCodec::GetInstance()
-    );
-    eventsChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(),
-      "com.layrz.ble.events",
-      &flutter::StandardMethodCodec::GetInstance()
-    );
-    checkCapabilitiesChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
-      plugin_pointer->HandleMethodCall(call, std::move(result));
-    });
-    startScanChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
-      plugin_pointer->HandleMethodCall(call, std::move(result));
-    });
-    stopScanChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
-      plugin_pointer->HandleMethodCall(call, std::move(result));
-    });
-    connectChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
-      plugin_pointer->HandleMethodCall(call, std::move(result));
-    });
-    disconnectChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
-      plugin_pointer->HandleMethodCall(call, std::move(result));
-    });
-    discoverServicesChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
-      plugin_pointer->HandleMethodCall(call, std::move(result));
-    });
-    setMtuChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
-      plugin_pointer->HandleMethodCall(call, std::move(result));
-    });
-    writeCharacteristicChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
-      plugin_pointer->HandleMethodCall(call, std::move(result));
-    });
-    readCharacteristicChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
-      plugin_pointer->HandleMethodCall(call, std::move(result));
-    });
-    startNotifyChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
-      plugin_pointer->HandleMethodCall(call, std::move(result));
-    });
-    stopNotifyChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result) {
-      plugin_pointer->HandleMethodCall(call, std::move(result));
-    });
+    methodChannel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+        registrar->messenger(),
+        "com.layrz.ble",
+        &flutter::StandardMethodCodec::GetInstance());
+
+    methodChannel->SetMethodCallHandler([plugin_pointer = plugin.get()](const auto &call, auto result)
+                                        { plugin_pointer->HandleMethodCall(call, std::move(result)); });
 
     registrar->AddPlugin(std::move(plugin));
   } // RegisterWithRegistrar
 
   /// @brief Construct a new LayrzBlePlugin object
   /// @param registrar
-  LayrzBlePlugin::LayrzBlePlugin(flutter::PluginRegistrarWindows *registrar) : uiThreadHandler_(registrar) {
+  LayrzBlePlugin::LayrzBlePlugin(flutter::PluginRegistrarWindows *registrar) : uiThreadHandler_(registrar)
+  {
     GetRadios();
   }
 
@@ -132,9 +38,9 @@ namespace layrz_ble {
   /// @param result
   /// @return void
   void LayrzBlePlugin::HandleMethodCall(
-    const flutter::MethodCall<flutter::EncodableValue> &method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
-  ) {
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
     Log("Handling method call: " + method_call.method_name());
     auto method = method_call.method_name();
 
@@ -146,6 +52,10 @@ namespace layrz_ble {
       stopScan(method_call, std::move(result));
     else if (method.compare("connect") == 0)
       connect(method_call, std::move(result));
+    else if (method.compare("isBonded") == 0)
+      isBonded(method_call, std::move(result));
+    else if (method.compare("pair") == 0)
+      pair(method_call, std::move(result));
     else if (method.compare("disconnect") == 0)
       disconnect(method_call, std::move(result));
     else if (method.compare("discoverServices") == 0)
@@ -166,17 +76,18 @@ namespace layrz_ble {
 
   /// @brief Get the Radios object
   /// @return winrt::fire_and_forget
-  winrt::fire_and_forget LayrzBlePlugin::GetRadios() {
+  winrt::fire_and_forget LayrzBlePlugin::GetRadios()
+  {
     auto radios = co_await Radio::GetRadiosAsync();
-    for(auto radio : radios)
-      if(radio.Kind() == RadioKind::Bluetooth)
+    for (auto radio : radios)
+      if (radio.Kind() == RadioKind::Bluetooth)
       {
         Log("Bluetooth radio found");
         btRadio = radio;
         break;
       }
 
-    if(!btRadio)
+    if (!btRadio)
       Log("No Bluetooth radio found");
   } // GetRadiosAync
 
@@ -187,14 +98,15 @@ namespace layrz_ble {
   /// @brief Check the capabilities of the device
   /// @param result
   /// @return void
-  void LayrzBlePlugin::checkCapabilities(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  void LayrzBlePlugin::checkCapabilities(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
     flutter::EncodableMap response;
-    bool hasPermissions =(btRadio != nullptr);
+    bool hasPermissions = (btRadio != nullptr);
 
-    response[flutter::EncodableValue("locationPermission")]              = flutter::EncodableValue(hasPermissions);
-    response[flutter::EncodableValue("bluetoothPermission")]             = flutter::EncodableValue(hasPermissions);
-    response[flutter::EncodableValue("bluetoothAdminOrScanPermission")]  = flutter::EncodableValue(hasPermissions);
-    response[flutter::EncodableValue("bluetoothConnectPermission")]      = flutter::EncodableValue(hasPermissions);
+    response[flutter::EncodableValue("locationPermission")] = flutter::EncodableValue(hasPermissions);
+    response[flutter::EncodableValue("bluetoothPermission")] = flutter::EncodableValue(hasPermissions);
+    response[flutter::EncodableValue("bluetoothAdminOrScanPermission")] = flutter::EncodableValue(hasPermissions);
+    response[flutter::EncodableValue("bluetoothConnectPermission")] = flutter::EncodableValue(hasPermissions);
 
     result->Success(response);
   } // checkCapabilities
@@ -204,36 +116,39 @@ namespace layrz_ble {
   /// @param result
   /// @return void
   void LayrzBlePlugin::startScan(
-    const flutter::MethodCall<flutter::EncodableValue> &method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue> > result
-  ) {
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
     filteredDeviceId = std::string("");
 
     // Get macAddress from arguments
     auto arguments = std::get<flutter::EncodableMap>(*method_call.arguments());
     auto macAddressFind = arguments.find(flutter::EncodableValue("macAddress"));
-    if(macAddressFind != arguments.end())
+    if (macAddressFind != arguments.end())
     {
-      try {
+      try
+      {
         Log("Filtering by macAddress");
         auto macAddress = std::get<std::string>(macAddressFind->second);
         Log("Casting");
         filteredDeviceId = toLowercase(macAddress);
         Log("Filtered by macAddress: " + filteredDeviceId);
-      } catch (...) {
+      }
+      catch (...)
+      {
         Log("Error filtering by macAddress");
         filteredDeviceId = std::string("");
       }
     }
 
     // Check if the radio is on
-    if(btRadio && btRadio.State() == RadioState::On)
+    if (btRadio && btRadio.State() == RadioState::On)
     {
       Log("Setting up the device watcher");
       setupWatcher();
       Log("Device watcher set up");
       // Start the scan
-      if(btScanner.Status() != DeviceWatcherStatus::Started)
+      if (btScanner.Status() != DeviceWatcherStatus::Started)
       {
         Log("Starting Bluetooth(Classic) watcher");
         btScanner.Start();
@@ -241,7 +156,7 @@ namespace layrz_ble {
       else
         Log("Bluetooth(Classic) watcher already started");
       // Start the scan
-      if(leScanner.Status() != BluetoothLEAdvertisementWatcherStatus::Started)
+      if (leScanner.Status() != BluetoothLEAdvertisementWatcherStatus::Started)
       {
         Log("Starting Bluetooth LE watcher");
         leScanner.Start();
@@ -262,11 +177,11 @@ namespace layrz_ble {
   /// @param result
   /// @return void
   void LayrzBlePlugin::stopScan(
-    const flutter::MethodCall<flutter::EncodableValue> &method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue> > result
-  ) {
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
     // Stop the scan
-    if(btScanner != nullptr)
+    if (btScanner != nullptr)
     {
       Log("Stopping Bluetooth(Classic) watcher");
       btScanner.Stop();
@@ -275,7 +190,7 @@ namespace layrz_ble {
     else
       Log("Bluetooth(Classic) watcher is not running");
     // Stopping the scan
-    if(leScanner != nullptr)
+    if (leScanner != nullptr)
     {
       Log("Stopping Bluetooth LE watcher");
       leScanner.Stop();
@@ -288,48 +203,43 @@ namespace layrz_ble {
 
   /// @brief Setup the watcher
   /// @return void
-  void LayrzBlePlugin::setupWatcher() {
+  void LayrzBlePlugin::setupWatcher()
+  {
     deviceWatcherDevices.clear();
 
-    if (btScanner == nullptr) 
+    if (btScanner == nullptr)
     {
       btScanner = DeviceInformation::CreateWatcher(Windows::Devices::Bluetooth::BluetoothDevice::GetDeviceSelector());
       // Subscribe to the Added event
-      btScanner.Added([this](DeviceWatcher const&, DeviceInformation const& device) 
-        {
+      btScanner.Added([this](DeviceWatcher const &, DeviceInformation const &device)
+                      {
           std::string deviceId = toLowercase(HStringToString(device.Id()));
           deviceWatcherDevices.insert_or_assign(deviceId, device);
-          handleScanResult(device);
-        }
-      );
+          handleScanResult(device); });
       // Subscribe to the Updated event
-      btScanner.Updated([this](DeviceWatcher const&, DeviceInformationUpdate const& args) 
-        {
+      btScanner.Updated([this](DeviceWatcher const &, DeviceInformationUpdate const &args)
+                        {
           auto deviceId = toLowercase(HStringToString(args.Id()));
           auto it = deviceWatcherDevices.find(deviceId);
-          if (it != deviceWatcherDevices.end()) 
+          if (it != deviceWatcherDevices.end())
           {
             it->second.Update(args);
             handleScanResult(it->second);
-          }
-        }
-      );
+          } });
       // Subscribe to the Removed event
-      btScanner.Removed([this](DeviceWatcher const&, DeviceInformationUpdate const& args)
-        {
+      btScanner.Removed([this](DeviceWatcher const &, DeviceInformationUpdate const &args)
+                        {
           auto deviceId = toLowercase(HStringToString(args.Id()));
-          deviceWatcherDevices.erase(deviceId);
-        }
-      );
+          deviceWatcherDevices.erase(deviceId); });
     } // if (btScanner == nullptr)
 
-    if (leScanner == nullptr) 
+    if (leScanner == nullptr)
     {
       leScanner = BluetoothLEAdvertisementWatcher();
       leScanner.ScanningMode(BluetoothLEScanningMode::Active);
       // Subscribe to the Received event
-      leScanner.Received([this](BluetoothLEAdvertisementWatcher const&, BluetoothLEAdvertisementReceivedEventArgs const& args)
-        {
+      leScanner.Received([this](BluetoothLEAdvertisementWatcher const &, BluetoothLEAdvertisementReceivedEventArgs const &args)
+                         {
           auto macAddress = toLowercase(formatBluetoothAddress(args.BluetoothAddress()));
 
           BleScanResult deviceInfo(macAddress);
@@ -338,12 +248,12 @@ namespace layrz_ble {
           if (args.Advertisement() != nullptr)
           {
             auto manufacturerItems = args.Advertisement().ManufacturerData();
-            for (const auto &item : manufacturerItems) 
+            for (const auto &item : manufacturerItems)
             {
               // Append the Company ID to manufacturerData
               // Extract additional data from the IBuffer
               auto dataBuffer = item.Data();
-              if (dataBuffer && dataBuffer.Length() > 0) 
+              if (dataBuffer && dataBuffer.Length() > 0)
               {
                 std::vector<uint8_t> manufacturerData;
                 auto reader = winrt::Windows::Storage::Streams::DataReader::FromBuffer(dataBuffer);
@@ -361,16 +271,21 @@ namespace layrz_ble {
 
             flutter::EncodableList serviceData = flutter::EncodableList();
             auto serviceItems = args.Advertisement().DataSections();
-            for (const auto& section : serviceItems) 
+
+            AdvPacketType advPacket;
+            deviceInfo.setServiceData(&advPacket);
+
+            for (const auto& section : serviceItems)
             {
               auto dataType = section.DataType();
               if (
                   dataType == BluetoothLEAdvertisementDataTypes::ServiceData16BitUuids() ||
                   dataType == BluetoothLEAdvertisementDataTypes::ServiceData32BitUuids() ||
-                  dataType == BluetoothLEAdvertisementDataTypes::ServiceData128BitUuids() ) 
+                  dataType == BluetoothLEAdvertisementDataTypes::ServiceData128BitUuids() )
               {
                 auto dataBuffer = section.Data();
-                if (dataBuffer && dataBuffer.Length() > 0) 
+                //std::cout << "length: "<< (int)dataBuffer.Length() << std::endl;
+                if (dataBuffer && dataBuffer.Length() > 0)
                 {
                   auto reader = winrt::Windows::Storage::Streams::DataReader::FromBuffer(dataBuffer);
                   std::vector<uint8_t> additionalData(dataBuffer.Length());
@@ -389,21 +304,25 @@ namespace layrz_ble {
 
                   std::vector<uint8_t> uuidBytes(additionalData.begin(), additionalData.begin() + uuidLength);
                   uint16_t uuid = (uuidBytes[1] << 8) | uuidBytes[0];
+
+                  /*std::cout << "from mac: " << macAddress << ":   ";
+                  std::cout << "uuid: " << std::hex << std::setw(2) << static_cast<int>(uuidBytes[0])
+                    << std::setw(2) << static_cast<int>(uuidBytes[1]) << std::endl;*/
+
                   std::vector<uint8_t> valueBytes(additionalData.begin() + uuidLength, additionalData.end());
-
-
                   deviceInfo.appendServiceData(uuid, valueBytes);
+
                 } // if (dataBuffer && dataBuffer.Length() > 0)
               } // if (dataType == BluetoothLEAdvertisementDataTypes::ServiceData16BitUuids() || ...)
             } // for (const auto& section : serviceItems)
 
             auto name = HStringToString(args.Advertisement().LocalName());
-            if (!name.empty()) 
+            if (!name.empty())
               deviceInfo.setName(name);
             else
             {
               auto it = deviceWatcherDevices.find(macAddress);
-              if (it != deviceWatcherDevices.end()) 
+              if (it != deviceWatcherDevices.end())
                 deviceInfo.setName(HStringToString(it->second.Name()));
             } // if (!name.empty())
           } // if (args.Advertisement() != nullptr)
@@ -418,26 +337,25 @@ namespace layrz_ble {
             deviceInfo.setTxPower(static_cast<int16_t>(txPower));
           }
 
-          handleBleScanResult(deviceInfo);
-        }
-      );
+          handleBleScanResult(deviceInfo); });
     } // if (leScanner == nullptr)
   } // setupWatcher
 
   /// @brief Handle the scan result
-  /// @param device 
+  /// @param device
   /// @return void
-  void LayrzBlePlugin::handleScanResult(DeviceInformation device) {
+  void LayrzBlePlugin::handleScanResult(DeviceInformation device)
+  {
     auto properties = device.Properties();
 
     auto bluetoothAddressPropertyValue = properties.Lookup(L"System.Devices.Aep.DeviceAddress").as<IPropertyValue>();
     std::string macAddress = toLowercase(HStringToString(bluetoothAddressPropertyValue.GetString()));
 
     auto result = BleScanResult(macAddress);
-    if(!device.Name().empty())
+    if (!device.Name().empty())
       result.setName(HStringToString(device.Name()));
 
-    if(properties.HasKey(L"System.Devices.Aep.SignalStrength"))
+    if (properties.HasKey(L"System.Devices.Aep.SignalStrength"))
     {
       auto signalStrength = properties.Lookup(L"System.Devices.Aep.SignalStrength").as<IPropertyValue>();
       result.setRssi(signalStrength.GetInt64());
@@ -449,93 +367,173 @@ namespace layrz_ble {
   /// @brief Handle the BLE scan result
   /// @param result
   /// @return void
-  void LayrzBlePlugin::handleBleScanResult(BleScanResult &result) {
-    if(result.DeviceId().empty())
+  void LayrzBlePlugin::handleBleScanResult(BleScanResult &result)
+  {
+    if (result.DeviceId().empty())
     {
       Log("Empty Mac Address");
       return;
     }
 
-    if(filteredDeviceId.length() > 0 && result.DeviceId() != filteredDeviceId)
+    if (filteredDeviceId.length() > 0 && result.DeviceId() != filteredDeviceId)
       return;
 
     // Check if the result.deviceId is inside of visibleDevices
     auto it = visibleDevices.find(result.DeviceId());
 
-    if(it != visibleDevices.end()) {
+    if (it != visibleDevices.end())
+    {
       // Update the existing device
       // Check if the name is not empty to update it
       auto &device = it->second;
-      if(result.Name()) {
+      if (result.Name())
+      {
         device.setName(*result.Name());
       }
 
-      if(result.Rssi()) {
+      if (result.Rssi())
+      {
         device.setRssi(result.Rssi());
       }
 
-      if (!result.ServiceData()->empty()) {
-        for (const auto &serviceData : *result.ServiceData()) {
+      if (!result.ServiceData()->empty())
+      {
+        AdvPacketType svcData;
+        device.setServiceData(&svcData);
+
+        for (const auto &serviceData : *result.ServiceData())
+        {
           device.appendServiceData(serviceData.first, serviceData.second);
         }
       }
 
-      if (!result.ManufacturerData()->empty()) {
-        for (const auto &mfd : *result.ManufacturerData()) {
+      if (!result.ManufacturerData()->empty())
+      {
+        for (const auto &mfd : *result.ManufacturerData())
+        {
           device.appendManufacturerData(mfd.first, mfd.second);
         }
       }
 
       visibleDevices.insert_or_assign(result.DeviceId(), device);
-    } else {
+    }
+    else
+    {
       visibleDevices.insert_or_assign(result.DeviceId(), result);
     }
 
     const auto &device = visibleDevices[result.DeviceId()];
     flutter::EncodableMap response;
 
-    response[flutter::EncodableValue("macAddress")]       = flutter::EncodableValue(device.DeviceId());
-    response[flutter::EncodableValue("name")]             = flutter::EncodableValue(device.Name() ? *device.Name() : "Unknown");
-    response[flutter::EncodableValue("rssi")]             = flutter::EncodableValue(device.Rssi());
-    if (device.TxPower()) {
-      response[flutter::EncodableValue("txPower")]        = flutter::EncodableValue(device.TxPower());
+    response[flutter::EncodableValue("macAddress")] = flutter::EncodableValue(device.DeviceId());
+    response[flutter::EncodableValue("name")] = flutter::EncodableValue(device.Name() ? *device.Name() : "Unknown");
+    response[flutter::EncodableValue("rssi")] = flutter::EncodableValue(device.Rssi());
+    if (device.TxPower())
+    {
+      response[flutter::EncodableValue("txPower")] = flutter::EncodableValue(device.TxPower());
     }
 
-    if (device.ManufacturerData() != nullptr) {
+    if (device.ManufacturerData() != nullptr)
+    {
       flutter::EncodableList manufacturerDataList;
-      for (const auto &mfd : *device.ManufacturerData()) {
+      for (const auto &mfd : *device.ManufacturerData())
+      {
         flutter::EncodableMap mfdMap = flutter::EncodableMap();
         mfdMap[flutter::EncodableValue("companyId")] = flutter::EncodableValue(mfd.first);
         mfdMap[flutter::EncodableValue("data")] = flutter::EncodableValue(mfd.second);
-        
+
         manufacturerDataList.push_back(mfdMap);
       }
 
       response[flutter::EncodableValue("manufacturerData")] = flutter::EncodableValue(manufacturerDataList);
     }
-    
-    if (device.ServiceData() != nullptr) {
+
+    if (device.ServiceData() != nullptr)
+    {
       flutter::EncodableList serviceDataList;
-      for (const auto &serviceData : *device.ServiceData()) {
+      for (const auto &serviceData : *device.ServiceData())
+      {
         flutter::EncodableMap serviceDataMap = flutter::EncodableMap();
         serviceDataMap[flutter::EncodableValue("uuid")] = flutter::EncodableValue(serviceData.first);
         serviceDataMap[flutter::EncodableValue("data")] = flutter::EncodableValue(serviceData.second);
-        
+
         serviceDataList.push_back(serviceDataMap);
       }
 
       response[flutter::EncodableValue("serviceData")] = flutter::EncodableValue(serviceDataList);
     }
-    
-    if(eventsChannel != nullptr) {
-      uiThreadHandler_.Post([this, response]() {
-        eventsChannel->InvokeMethod(
-          "onScan",
-          std::make_unique<flutter::EncodableValue>(response)
-        );
-      });
+
+    if (methodChannel != nullptr)
+    {
+      uiThreadHandler_.Post([this, response]()
+                            { methodChannel->InvokeMethod(
+                                  "onScan",
+                                  std::make_unique<flutter::EncodableValue>(response)); });
     }
   } // handleBleScanResult
+
+  winrt::fire_and_forget LayrzBlePlugin::isBonded(
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
+
+    if (!connectedDevice || !connectedDevice->Device())
+    {
+      result->Success(flutter::EncodableValue(false));
+      co_return;
+    }
+
+    if (connectedDevice->Device().value().DeviceInformation().Pairing().IsPaired())
+    {
+      result->Success(flutter::EncodableValue(true));
+    }
+    else
+    {
+      result->Success(flutter::EncodableValue(false));
+    }
+
+    co_return;
+  }
+  winrt::fire_and_forget LayrzBlePlugin::pair(
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
+
+    Log("calling pair");
+
+    if (!connectedDevice || !connectedDevice->Device())
+    {
+      Log("not connected");
+      result->Success(flutter::EncodableValue(false));
+      co_return;
+    }
+
+    if (connectedDevice->Device().value().DeviceInformation().Pairing().IsPaired())
+    {
+      Log("Device is already paired.");
+      result->Success(flutter::EncodableValue(true));
+      co_return;
+    }
+    else
+    {
+      Log("Device is not paired. Attempting to pair...");
+    }
+
+    auto pairingResult = co_await connectedDevice->Device().value().DeviceInformation().Pairing().PairAsync();
+
+    if (pairingResult.Status() == winrt::Windows::Devices::Enumeration::DevicePairingResultStatus::Paired)
+    {
+      Log("Successfully paired with device.");
+      result->Success(flutter::EncodableValue(true));
+    }
+    else
+    {
+      Log("Pairing failed: ");
+      result->Success(flutter::EncodableValue(false));
+    }
+
+    co_return;
+  }
 
   /// @brief Connect to the device
   /// @param method_call
@@ -543,73 +541,83 @@ namespace layrz_ble {
   /// @return void
   winrt::fire_and_forget LayrzBlePlugin::connect(
       const flutter::MethodCall<flutter::EncodableValue> &method_call,
-      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue> > result
-  ) {
-    if (connectedDevice != nullptr) 
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
+
+    Log("calling connect");
+
+    if (connectedDevice != nullptr)
     {
       Log("Already connected to a device");
-      result->Success(flutter::EncodableValue(false));
+      result->Success(flutter::EncodableValue(true));
       co_return;
     }
 
     auto macAddress = std::get<std::string>(*method_call.arguments());
     Log("MacAddress casted to " + macAddress);
     auto it = visibleDevices.find(toLowercase(macAddress));
-    if (it == visibleDevices.end()) {
+    if (it == visibleDevices.end())
+    {
       Log("Device not found");
       result->Success(flutter::EncodableValue(false));
       co_return;
     }
 
-    if(btScanner != nullptr){
-      Log("Stopping Bluetooth(Classic) watcher");
-      btScanner.Stop();
-      btScanner = nullptr;
-    }
+    /* if(btScanner != nullptr){
+       Log("Stopping Bluetooth(Classic) watcher");
+       btScanner.Stop();
+       btScanner = nullptr;
+     }
 
-    // Stopping the scan
-    if(leScanner != nullptr){
-      Log("Stopping Bluetooth LE watcher");
-      leScanner.Stop();
-      leScanner = nullptr;
+     // Stopping the scan
+     if(leScanner != nullptr){
+       Log("Stopping Bluetooth LE watcher");
+       leScanner.Stop();
+       leScanner = nullptr;
 
-      if (eventsChannel != nullptr) {
-        eventsChannel->InvokeMethod(
-          "onEvent",
-          std::make_unique<flutter::EncodableValue>("SCAN_STOPPED")
-        );
-      }
-    }
+       if (methodChannel != nullptr) {
+         methodChannel->InvokeMethod(
+           "onEvent",
+           std::make_unique<flutter::EncodableValue>("SCAN_STOPPED")
+         );
+       }
+     }*/
 
     Log("Device found, attempting to get");
     auto device = it->second;
 
     auto connDevice = co_await BluetoothLEDevice::FromBluetoothAddressAsync(device.Address());
-    if (!connDevice) {
+    if (!connDevice)
+    {
       Log("Failed to connect to the device");
       result->Success(flutter::EncodableValue(false));
       co_return;
     }
+
+    Log("connected!");
 
     servicesAndCharacteristics.clear();
     servicesNotifying.clear();
     device.setDevice(connDevice);
 
     Log("Device found, attempting to get GATT services");
-    auto servicesResult = co_await connDevice.GetGattServicesAsync((BluetoothCacheMode::Uncached));
+    auto servicesResult = co_await connDevice.GetGattServicesAsync(BluetoothCacheMode::Uncached);
     auto status = servicesResult.Status();
-    if (status != GattCommunicationStatus::Success) {
+    if (status != GattCommunicationStatus::Success)
+    {
       Log("Failed to get GATT services");
       result->Success(flutter::EncodableValue(false));
       co_return;
     }
 
-    for (auto service : servicesResult.Services()) {
+    for (auto service : servicesResult.Services())
+    {
       auto serviceUuid = toLowercase(GuidToString(service.Uuid()));
       servicesAndCharacteristics[serviceUuid] = BleService(service);
 
       auto characteristics = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Uncached);
-      for (auto characteristic : characteristics.Characteristics()) {
+      for (auto characteristic : characteristics.Characteristics())
+      {
         auto characteristicUuid = toLowercase(GuidToString(characteristic.Uuid()));
         servicesAndCharacteristics[serviceUuid].addCharacteristic(BleCharacteristic(characteristic));
       }
@@ -621,34 +629,35 @@ namespace layrz_ble {
     connectedDevice = std::make_unique<BleScanResult>(device);
     result->Success(flutter::EncodableValue(true));
 
-    if (eventsChannel != nullptr) {
-      uiThreadHandler_.Post([this]() {
-        eventsChannel->InvokeMethod(
-          "onEvent",
-          std::make_unique<flutter::EncodableValue>("CONNECTED")
-        ); 
-      });
+    if (methodChannel != nullptr)
+    {
+      uiThreadHandler_.Post([this]()
+                            { methodChannel->InvokeMethod(
+                                  "onEvent",
+                                  std::make_unique<flutter::EncodableValue>("CONNECTED")); });
     }
+
     co_return;
   } // connect
 
   /// @brief Disconnect from the device
-  /// @param method_call 
-  /// @param result 
+  /// @param method_call
+  /// @param result
   /// @return void
   winrt::fire_and_forget LayrzBlePlugin::disconnect(
-    const flutter::MethodCall<flutter::EncodableValue> &method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue> > result
-  ) {
-    if (connectedDevice == nullptr) 
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
+    if (connectedDevice == nullptr)
     {
       Log("Not connected to a device");
       result->Success(flutter::EncodableValue(false));
       co_return;
     }
-    
+
     auto device = connectedDevice.get()->Device();
-    if (!device) {
+    if (!device)
+    {
       Log("Device not found");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -660,11 +669,11 @@ namespace layrz_ble {
     servicesAndCharacteristics.clear();
 
     result->Success(flutter::EncodableValue(true));
-    if (eventsChannel != nullptr) {
-      eventsChannel->InvokeMethod(
-        "onEvent",
-        std::make_unique<flutter::EncodableValue>("DISCONNECTED")
-      ); 
+    if (methodChannel != nullptr)
+    {
+      methodChannel->InvokeMethod(
+          "onEvent",
+          std::make_unique<flutter::EncodableValue>("DISCONNECTED"));
     }
     co_return;
   } // disconnect
@@ -674,9 +683,9 @@ namespace layrz_ble {
   /// @param result
   /// @return void
   winrt::fire_and_forget LayrzBlePlugin::discoverServices(
-    const flutter::MethodCall<flutter::EncodableValue> &method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
-  ) {
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
     if (connectedDevice == nullptr)
     {
       Log("Not connected to a device");
@@ -685,25 +694,28 @@ namespace layrz_ble {
     }
 
     auto device = connectedDevice.get()->Device();
-    if (!device) {
+    if (!device)
+    {
       Log("Device not found");
       result->Success(flutter::EncodableValue());
       co_return;
     }
 
     auto gatt = co_await GattSession::FromDeviceIdAsync(device->BluetoothDeviceId());
-    if (!gatt) {
+    if (!gatt)
+    {
       Log("Failed to get GATT session");
       result->Success(flutter::EncodableValue());
       co_return;
     }
 
-
     flutter::EncodableList output = {};
-    for (auto [serviceUuid, service] : servicesAndCharacteristics) {
+    for (auto [serviceUuid, service] : servicesAndCharacteristics)
+    {
 
       flutter::EncodableList characteristicsOutput = {};
-      for (auto [characteristicUuid, characteristicItm] : service.Characteristics()) {
+      for (auto [characteristicUuid, characteristicItm] : service.Characteristics())
+      {
         auto characteristic = characteristicItm.Characteristic();
         flutter::EncodableMap characteristicObj = {};
         flutter::EncodableList propertiesList = {};
@@ -711,42 +723,50 @@ namespace layrz_ble {
         std::vector<std::string> propertiesToStore = {};
 
         auto properties = characteristic.CharacteristicProperties();
-        if ((properties & GattCharacteristicProperties::Read) == GattCharacteristicProperties::Read) {
+        if ((properties & GattCharacteristicProperties::Read) == GattCharacteristicProperties::Read)
+        {
           propertiesList.push_back(flutter::EncodableValue("READ"));
           propertiesToStore.push_back("READ");
         }
-        
-        if ((properties & GattCharacteristicProperties::Write) == GattCharacteristicProperties::Write) {
+
+        if ((properties & GattCharacteristicProperties::Write) == GattCharacteristicProperties::Write)
+        {
           propertiesList.push_back(flutter::EncodableValue("WRITE"));
           propertiesToStore.push_back("WRITE");
         }
-        
-        if ((properties & GattCharacteristicProperties::Notify) == GattCharacteristicProperties::Notify) {
+
+        if ((properties & GattCharacteristicProperties::Notify) == GattCharacteristicProperties::Notify)
+        {
           propertiesList.push_back(flutter::EncodableValue("NOTIFY"));
           propertiesToStore.push_back("NOTIFY");
         }
-        
-        if ((properties & GattCharacteristicProperties::Indicate) == GattCharacteristicProperties::Indicate) {
+
+        if ((properties & GattCharacteristicProperties::Indicate) == GattCharacteristicProperties::Indicate)
+        {
           propertiesList.push_back(flutter::EncodableValue("INDICATE"));
           propertiesToStore.push_back("INDICATE");
         }
 
-        if ((properties & GattCharacteristicProperties::AuthenticatedSignedWrites) == GattCharacteristicProperties::AuthenticatedSignedWrites) {
+        if ((properties & GattCharacteristicProperties::AuthenticatedSignedWrites) == GattCharacteristicProperties::AuthenticatedSignedWrites)
+        {
           propertiesList.push_back(flutter::EncodableValue("AUTH_SIGN_WRITES"));
           propertiesToStore.push_back("AUTH_SIGN_WRITES");
         }
 
-        if ((properties & GattCharacteristicProperties::ExtendedProperties) == GattCharacteristicProperties::ExtendedProperties) {
+        if ((properties & GattCharacteristicProperties::ExtendedProperties) == GattCharacteristicProperties::ExtendedProperties)
+        {
           propertiesList.push_back(flutter::EncodableValue("EXTENDED_PROP"));
           propertiesToStore.push_back("EXTENDED_PROP");
         }
 
-        if ((properties & GattCharacteristicProperties::Broadcast) == GattCharacteristicProperties::Broadcast) {
+        if ((properties & GattCharacteristicProperties::Broadcast) == GattCharacteristicProperties::Broadcast)
+        {
           propertiesList.push_back(flutter::EncodableValue("BROADCAST"));
           propertiesToStore.push_back("BROADCAST");
         }
-        
-        if ((properties & GattCharacteristicProperties::WriteWithoutResponse) == GattCharacteristicProperties::WriteWithoutResponse) {
+
+        if ((properties & GattCharacteristicProperties::WriteWithoutResponse) == GattCharacteristicProperties::WriteWithoutResponse)
+        {
           propertiesList.push_back(flutter::EncodableValue("WRITE_WO_RSP"));
           propertiesToStore.push_back("WRITE_WO_RSP");
         }
@@ -771,9 +791,9 @@ namespace layrz_ble {
   /// @param result
   /// @return void
   winrt::fire_and_forget LayrzBlePlugin::setMtu(
-    const flutter::MethodCall<flutter::EncodableValue> &method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
-  ) {
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
     if (connectedDevice == nullptr)
     {
       Log("Not connected to a device");
@@ -782,14 +802,16 @@ namespace layrz_ble {
     }
 
     auto device = connectedDevice.get()->Device();
-    if (!device) {
+    if (!device)
+    {
       Log("Device not found");
       result->Success(flutter::EncodableValue(false));
       co_return;
     }
 
     auto gatt = co_await GattSession::FromDeviceIdAsync(device->BluetoothDeviceId());
-    if (!gatt) {
+    if (!gatt)
+    {
       Log("Failed to get GATT session");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -799,23 +821,25 @@ namespace layrz_ble {
     result->Success(flutter::EncodableValue(mtu));
     co_return;
   } // setMtu
-  
+
   /// @brief Read the characteristic
   /// @param method_call
-  /// @param result 
+  /// @param result
   /// @return void
   winrt::fire_and_forget LayrzBlePlugin::readCharacteristic(
-    const flutter::MethodCall<flutter::EncodableValue> &method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue> > result
-  ) {
-    if (connectedDevice == nullptr) {
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
+    if (connectedDevice == nullptr)
+    {
       Log("Not connected to a device");
       result->Success(flutter::EncodableValue());
       co_return;
     }
 
     auto device = connectedDevice.get()->Device();
-    if (!device) {
+    if (!device)
+    {
       Log("Device not found");
       result->Success(flutter::EncodableValue());
       co_return;
@@ -825,7 +849,8 @@ namespace layrz_ble {
     auto arguments = std::get<flutter::EncodableMap>(*method_call.arguments());
     // Log("Getting service UUID");
     auto rawServiceUuid = arguments.find(flutter::EncodableValue("serviceUuid"));
-    if (rawServiceUuid == arguments.end()) {
+    if (rawServiceUuid == arguments.end())
+    {
       Log("Service UUID not provided");
       result->Success(flutter::EncodableValue());
       co_return;
@@ -835,7 +860,8 @@ namespace layrz_ble {
 
     // Log("Casting characteristic UUID");
     auto rawCharacteristicUuid = arguments.find(flutter::EncodableValue("characteristicUuid"));
-    if (rawCharacteristicUuid == arguments.end()) {
+    if (rawCharacteristicUuid == arguments.end())
+    {
       Log("Characteristic UUID not provided");
       result->Success(flutter::EncodableValue());
       co_return;
@@ -843,7 +869,8 @@ namespace layrz_ble {
     // Log("Casting characteristic UUID");
     auto characteristicUuid = toLowercase(std::get<std::string>(rawCharacteristicUuid->second));
 
-    if (servicesNotifying.find(characteristicUuid) != servicesNotifying.end()) {
+    if (servicesNotifying.find(characteristicUuid) != servicesNotifying.end())
+    {
       Log("This characteristic " + characteristicUuid + " is notifying, so we can't read it");
       result->Success(flutter::EncodableValue());
       co_return;
@@ -851,7 +878,8 @@ namespace layrz_ble {
 
     // Log("Getting service from GATT " + serviceUuid);
     auto serviceSearch = servicesAndCharacteristics.find(serviceUuid);
-    if (serviceSearch == servicesAndCharacteristics.end()) {
+    if (serviceSearch == servicesAndCharacteristics.end())
+    {
       Log("Service " + serviceUuid + " not found");
       result->Success(flutter::EncodableValue());
       co_return;
@@ -862,7 +890,8 @@ namespace layrz_ble {
     auto characteristics = service.Characteristics();
     // Log("Getting characteristic from service " + serviceUuid);
     auto characteristicSearch = characteristics.find(characteristicUuid);
-    if (characteristicSearch == characteristics.end()) {
+    if (characteristicSearch == characteristics.end())
+    {
       Log("Characteristic " + characteristicUuid + " not found in service " + serviceUuid);
       result->Success(flutter::EncodableValue());
       co_return;
@@ -871,15 +900,18 @@ namespace layrz_ble {
     auto characteristic = characteristicSearch->second.Characteristic();
 
     auto properties = characteristic.CharacteristicProperties();
-    if ((properties & GattCharacteristicProperties::Read) != GattCharacteristicProperties::Read) {
-      Log("Characteristic does not support writing");
-      result->Success(flutter::EncodableValue(false));
+    if ((properties & GattCharacteristicProperties::Read) != GattCharacteristicProperties::Read)
+    {
+      Log("Characteristic does not support reading");
+      result->Success(flutter::EncodableValue());
       co_return;
     }
 
-    try {
-      auto data = co_await characteristic.ReadValueAsync();
-      if (data.Status() != GattCommunicationStatus::Success) {
+    try
+    {
+      auto data = co_await characteristic.ReadValueAsync(BluetoothCacheMode::Uncached);
+      if (data.Status() != GattCommunicationStatus::Success)
+      {
         Log("Failed to read characteristic value");
         result->Success(flutter::EncodableValue());
         co_return;
@@ -887,35 +919,40 @@ namespace layrz_ble {
 
       auto value = IBufferToVector(data.Value());
       result->Success(flutter::EncodableValue(value));
-    } catch (...) {
+    }
+    catch (...)
+    {
       Log("Failed to read characteristic value");
       result->Success(flutter::EncodableValue());
     }
   } // readCharacteristic
 
   /// @brief Write to the characteristic
-  /// @param method_call 
-  /// @param result 
-  /// @return 
+  /// @param method_call
+  /// @param result
+  /// @return
   winrt::fire_and_forget LayrzBlePlugin::writeCharacteristic(
-    const flutter::MethodCall<flutter::EncodableValue> &method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue> > result
-  ) {
-    if (connectedDevice == nullptr) {
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
+    if (connectedDevice == nullptr)
+    {
       Log("Not connected to a device");
       result->Success(flutter::EncodableValue(false));
       co_return;
     }
 
     auto device = connectedDevice.get()->Device();
-    if (!device) {
+    if (!device)
+    {
       Log("Device not found");
       result->Success(flutter::EncodableValue(false));
       co_return;
     }
 
     auto connStatus = device->ConnectionStatus();
-    if (connStatus != BluetoothConnectionStatus::Connected) {
+    if (connStatus != BluetoothConnectionStatus::Connected)
+    {
       Log("Device not connected");
       disconnect(method_call, std::move(result));
       result->Success(flutter::EncodableValue(false));
@@ -926,7 +963,8 @@ namespace layrz_ble {
     auto arguments = std::get<flutter::EncodableMap>(*method_call.arguments());
     // Log("Getting service UUID");
     auto rawServiceUuid = arguments.find(flutter::EncodableValue("serviceUuid"));
-    if (rawServiceUuid == arguments.end()) {
+    if (rawServiceUuid == arguments.end())
+    {
       Log("Service UUID not provided");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -936,7 +974,8 @@ namespace layrz_ble {
 
     // Log("Casting characteristic UUID");
     auto rawCharacteristicUuid = arguments.find(flutter::EncodableValue("characteristicUuid"));
-    if (rawCharacteristicUuid == arguments.end()) {
+    if (rawCharacteristicUuid == arguments.end())
+    {
       Log("Characteristic UUID not provided");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -946,7 +985,8 @@ namespace layrz_ble {
 
     // Log("Getting payload");
     auto rawPayload = arguments.find(flutter::EncodableValue("payload"));
-    if (rawPayload == arguments.end()) {
+    if (rawPayload == arguments.end())
+    {
       Log("Payload not provided");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -956,7 +996,8 @@ namespace layrz_ble {
     // Log("Getting withResponse");
     auto rawWithResponse = arguments.find(flutter::EncodableValue("withResponse"));
     bool withResponse = false;
-    if (rawWithResponse != arguments.end()) {
+    if (rawWithResponse != arguments.end())
+    {
       withResponse = std::get<bool>(rawWithResponse->second);
     }
 
@@ -964,7 +1005,8 @@ namespace layrz_ble {
 
     // Log("Getting service from GATT " + serviceUuid);
     auto serviceSearch = servicesAndCharacteristics.find(serviceUuid);
-    if (serviceSearch == servicesAndCharacteristics.end()) {
+    if (serviceSearch == servicesAndCharacteristics.end())
+    {
       Log("Service " + serviceUuid + " not found");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -974,7 +1016,8 @@ namespace layrz_ble {
     auto characteristics = service.Characteristics();
 
     auto characteristicsSearch = characteristics.find(characteristicUuid);
-    if (characteristicsSearch == characteristics.end()) {
+    if (characteristicsSearch == characteristics.end())
+    {
       Log("Characteristic " + characteristicUuid + " not found in service " + serviceUuid);
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -982,7 +1025,8 @@ namespace layrz_ble {
 
     auto characteristic = characteristicsSearch->second.Characteristic();
     auto properties = characteristic.CharacteristicProperties();
-    if ((properties & GattCharacteristicProperties::Write) != GattCharacteristicProperties::Write) {
+    if ((properties & GattCharacteristicProperties::Write) != GattCharacteristicProperties::Write)
+    {
       Log("Characteristic does not support writing");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -990,9 +1034,11 @@ namespace layrz_ble {
 
     // Log("Writing to characteristic " + characteristicUuid + " from service " + serviceUuid);
     auto writeType = withResponse ? GattWriteOption::WriteWithResponse : GattWriteOption::WriteWithoutResponse;
-    try {
+    try
+    {
       auto status = co_await characteristic.WriteValueAsync(VectorToIBuffer(payload), writeType);
-      if (status != GattCommunicationStatus::Success) {
+      if (status != GattCommunicationStatus::Success)
+      {
         Log("Failed to write characteristic value");
         result->Success(flutter::EncodableValue(false));
         co_return;
@@ -1001,7 +1047,9 @@ namespace layrz_ble {
       Log("Successfully wrote to characteristic " + characteristicUuid + " from service " + serviceUuid);
       result->Success(flutter::EncodableValue(true));
       co_return;
-    } catch (...) {
+    }
+    catch (...)
+    {
       Log("Failed to write characteristic value");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1009,21 +1057,23 @@ namespace layrz_ble {
   } // writeCharacteristic
 
   /// @brief Start notifications for the characteristic
-  /// @param method_call 
-  /// @param result 
-  /// @return 
+  /// @param method_call
+  /// @param result
+  /// @return
   winrt::fire_and_forget LayrzBlePlugin::startNotify(
-    const flutter::MethodCall<flutter::EncodableValue> &method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue> > result
-  ) {
-    if (connectedDevice == nullptr) {
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
+    if (connectedDevice == nullptr)
+    {
       Log("Not connected to a device");
       result->Success(flutter::EncodableValue(false));
       co_return;
     }
 
     auto device = connectedDevice.get()->Device();
-    if (!device) {
+    if (!device)
+    {
       Log("Device not found");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1033,7 +1083,8 @@ namespace layrz_ble {
     auto arguments = std::get<flutter::EncodableMap>(*method_call.arguments());
     // Log("Getting service UUID");
     auto rawServiceUuid = arguments.find(flutter::EncodableValue("serviceUuid"));
-    if (rawServiceUuid == arguments.end()) {
+    if (rawServiceUuid == arguments.end())
+    {
       Log("Service UUID not provided");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1043,7 +1094,8 @@ namespace layrz_ble {
 
     // Log("Casting characteristic UUID");
     auto rawCharacteristicUuid = arguments.find(flutter::EncodableValue("characteristicUuid"));
-    if (rawCharacteristicUuid == arguments.end()) {
+    if (rawCharacteristicUuid == arguments.end())
+    {
       Log("Characteristic UUID not provided");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1051,14 +1103,16 @@ namespace layrz_ble {
     // Log("Casting characteristic UUID");
     auto characteristicUuid = toLowercase(std::get<std::string>(rawCharacteristicUuid->second));
 
-    if (servicesNotifying.find(characteristicUuid) != servicesNotifying.end()) {
+    if (servicesNotifying.find(characteristicUuid) != servicesNotifying.end())
+    {
       Log("Already subscribed to characteristic notifications");
       result->Success(flutter::EncodableValue(true));
       co_return;
     }
 
     auto serviceSearch = servicesAndCharacteristics.find(serviceUuid);
-    if (serviceSearch == servicesAndCharacteristics.end()) {
+    if (serviceSearch == servicesAndCharacteristics.end())
+    {
       Log("Service " + serviceUuid + " not found");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1067,7 +1121,8 @@ namespace layrz_ble {
     auto characteristics = service.Characteristics();
 
     auto characteristicsSearch = characteristics.find(characteristicUuid);
-    if (characteristicsSearch == characteristics.end()) {
+    if (characteristicsSearch == characteristics.end())
+    {
       Log("Characteristic " + characteristicUuid + " not found in service " + serviceUuid);
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1076,7 +1131,8 @@ namespace layrz_ble {
     auto characteristic = characteristicsSearch->second.Characteristic();
 
     auto properties = characteristic.CharacteristicProperties();
-    if ((properties & GattCharacteristicProperties::Notify) != GattCharacteristicProperties::Notify) {
+    if ((properties & GattCharacteristicProperties::Notify) != GattCharacteristicProperties::Notify)
+    {
       // Log("Characteristic does not support notifications");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1085,9 +1141,11 @@ namespace layrz_ble {
     // Log("Subscribing to characteristic " + characteristicUuid + " from service " + serviceUuid);
     auto descriptor = GattClientCharacteristicConfigurationDescriptorValue::Notify;
 
-    try {
+    try
+    {
       auto status = co_await characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(descriptor);
-      if (status != GattCommunicationStatus::Success) {
+      if (status != GattCommunicationStatus::Success)
+      {
         // Log("Failed to subscribe to characteristic notifications");
         result->Success(flutter::EncodableValue(false));
         co_return;
@@ -1098,7 +1156,9 @@ namespace layrz_ble {
       auto token = characteristic.ValueChanged({this, &LayrzBlePlugin::onCharacteristicValueChanged});
       servicesNotifying[characteristicUuid] = token;
       Log("Successfully subscribed to characteristic " + characteristicUuid + " from service " + serviceUuid);
-    } catch (...) {
+    }
+    catch (...)
+    {
       Log("Failed to subscribe to characteristic notifications");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1109,21 +1169,23 @@ namespace layrz_ble {
   } // startNotify
 
   /// @brief Stop notifications for the characteristic
-  /// @param method_call 
-  /// @param result 
-  /// @return 
+  /// @param method_call
+  /// @param result
+  /// @return
   winrt::fire_and_forget LayrzBlePlugin::stopNotify(
-    const flutter::MethodCall<flutter::EncodableValue> &method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue> > result
-  ) {
-    if (connectedDevice == nullptr) {
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
+    if (connectedDevice == nullptr)
+    {
       Log("Not connected to a device");
       result->Success(flutter::EncodableValue(false));
       co_return;
     }
 
     auto device = connectedDevice.get()->Device();
-    if (!device) {
+    if (!device)
+    {
       Log("Device not found");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1133,7 +1195,8 @@ namespace layrz_ble {
     auto arguments = std::get<flutter::EncodableMap>(*method_call.arguments());
     // Log("Getting service UUID");
     auto rawServiceUuid = arguments.find(flutter::EncodableValue("serviceUuid"));
-    if (rawServiceUuid == arguments.end()) {
+    if (rawServiceUuid == arguments.end())
+    {
       Log("Service UUID not provided");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1143,7 +1206,8 @@ namespace layrz_ble {
 
     // Log("Casting characteristic UUID");
     auto rawCharacteristicUuid = arguments.find(flutter::EncodableValue("characteristicUuid"));
-    if (rawCharacteristicUuid == arguments.end()) {
+    if (rawCharacteristicUuid == arguments.end())
+    {
       Log("Characteristic UUID not provided");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1151,14 +1215,16 @@ namespace layrz_ble {
     // Log("Casting characteristic UUID");
     auto characteristicUuid = toLowercase(std::get<std::string>(rawCharacteristicUuid->second));
 
-    if (servicesNotifying.find(characteristicUuid) == servicesNotifying.end()) {
+    if (servicesNotifying.find(characteristicUuid) == servicesNotifying.end())
+    {
       Log("Already not subscribed to characteristic notifications");
       result->Success(flutter::EncodableValue(true));
       co_return;
     }
 
     auto serviceSearch = servicesAndCharacteristics.find(serviceUuid);
-    if (serviceSearch == servicesAndCharacteristics.end()) {
+    if (serviceSearch == servicesAndCharacteristics.end())
+    {
       Log("Service " + serviceUuid + " not found");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1168,7 +1234,8 @@ namespace layrz_ble {
     auto characteristics = service.Characteristics();
 
     auto characteristicsSearch = characteristics.find(characteristicUuid);
-    if (characteristicsSearch == characteristics.end()) {
+    if (characteristicsSearch == characteristics.end())
+    {
       Log("Characteristic " + characteristicUuid + " not found in service " + serviceUuid);
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1177,7 +1244,8 @@ namespace layrz_ble {
     auto characteristic = characteristicsSearch->second.Characteristic();
 
     auto properties = characteristic.CharacteristicProperties();
-    if ((properties & GattCharacteristicProperties::Notify) != GattCharacteristicProperties::Notify) {
+    if ((properties & GattCharacteristicProperties::Notify) != GattCharacteristicProperties::Notify)
+    {
       // Log("Characteristic does not support notifications");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1186,9 +1254,11 @@ namespace layrz_ble {
     // Log("Subscribing to characteristic " + characteristicUuid + " from service " + serviceUuid);
     auto descriptor = GattClientCharacteristicConfigurationDescriptorValue::None;
 
-    try {
+    try
+    {
       auto status = co_await characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(descriptor);
-      if (status != GattCommunicationStatus::Success) {
+      if (status != GattCommunicationStatus::Success)
+      {
         // Log("Failed to subscribe to characteristic notifications");
         result->Success(flutter::EncodableValue(false));
         co_return;
@@ -1198,7 +1268,9 @@ namespace layrz_ble {
       characteristic.ValueChanged(servicesNotifying[characteristicUuid]);
       servicesNotifying.erase(characteristicUuid);
       Log("Successfully unsubscribed to characteristic " + characteristicUuid + " from service " + serviceUuid);
-    } catch (...) {
+    }
+    catch (...)
+    {
       Log("Failed to unsubscribe to characteristic notifications");
       result->Success(flutter::EncodableValue(false));
       co_return;
@@ -1209,9 +1281,10 @@ namespace layrz_ble {
   } // stopNotify
 
   /// @brief When the characteristic value changed
-  /// @param sender 
-  /// @param args 
-  void LayrzBlePlugin::onCharacteristicValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args) {
+  /// @param sender
+  /// @param args
+  void LayrzBlePlugin::onCharacteristicValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
+  {
     Log("Received characteristic value changed event");
     auto characteristicUuid = toLowercase(GuidToString(sender.Uuid()));
     Log("Characteristic UUID: " + characteristicUuid);
@@ -1225,46 +1298,48 @@ namespace layrz_ble {
     response[flutter::EncodableValue("characteristicUuid")] = flutter::EncodableValue(characteristicUuid);
     response[flutter::EncodableValue("value")] = flutter::EncodableValue(value);
 
-    if (eventsChannel != nullptr) {
-      uiThreadHandler_.Post([this, response]() {
-        eventsChannel->InvokeMethod(
-          "onNotify",
-          std::make_unique<flutter::EncodableValue>(response)
-        );
-      });
+    if (methodChannel != nullptr)
+    {
+      uiThreadHandler_.Post([this, response]()
+                            { methodChannel->InvokeMethod(
+                                  "onNotify",
+                                  std::make_unique<flutter::EncodableValue>(response)); });
     }
   } // onCharacteristicValueChanged
 
   /// @brief When the connection status changed
-  /// @param device 
-  /// @param args 
-  void LayrzBlePlugin::onConnectionStatusChanged(BluetoothLEDevice device, IInspectable args) {
+  /// @param device
+  /// @param args
+  void LayrzBlePlugin::onConnectionStatusChanged(BluetoothLEDevice device, IInspectable args)
+  {
     auto status = device.ConnectionStatus();
-    if (status == BluetoothConnectionStatus::Disconnected) {
+    if (status == BluetoothConnectionStatus::Disconnected)
+    {
       connectedDevice = nullptr;
       servicesNotifying.clear();
 
-      if (eventsChannel != nullptr) {
-        uiThreadHandler_.Post([this]() {
-          eventsChannel->InvokeMethod(
-            "onEvent",
-            std::make_unique<flutter::EncodableValue>("DISCONNECTED")
-          );
-        });
+      if (methodChannel != nullptr)
+      {
+        uiThreadHandler_.Post([this]()
+                              { methodChannel->InvokeMethod(
+                                    "onEvent",
+                                    std::make_unique<flutter::EncodableValue>("DISCONNECTED")); });
       }
-    } else if (status == BluetoothConnectionStatus::Connected) {
-      if (eventsChannel != nullptr) {
-        uiThreadHandler_.Post([this]() {
-          eventsChannel->InvokeMethod(
-            "onEvent",
-            std::make_unique<flutter::EncodableValue>("CONNECTED")
-          );
-        });
+    }
+    else if (status == BluetoothConnectionStatus::Connected)
+    {
+      if (methodChannel != nullptr)
+      {
+        uiThreadHandler_.Post([this]()
+                              { methodChannel->InvokeMethod(
+                                    "onEvent",
+                                    std::make_unique<flutter::EncodableValue>("CONNECTED")); });
       }
     }
   } // onConnectionStatusChanged
 
-  std::string LayrzBlePlugin::standarizeServiceUuid(std::string rawUuid) {
-    return rawUuid.substr(2,2) + rawUuid.substr(0,2);
+  std::string LayrzBlePlugin::standarizeServiceUuid(std::string rawUuid)
+  {
+    return rawUuid.substr(2, 2) + rawUuid.substr(0, 2);
   }
 } // namespace layrz_ble

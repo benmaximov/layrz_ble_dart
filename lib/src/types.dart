@@ -94,6 +94,9 @@ enum BleEvent {
   /// [scanStopped] is an event that is triggered when the scan is stopped.
   /// This event can be triggered by the user or by the system when you are connected to a device.
   scanStopped,
+
+  /// [paired] is an event that is triggered when a BLE device is paired.
+  paired,
   ;
 
   @override

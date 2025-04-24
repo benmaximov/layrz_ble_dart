@@ -6,4 +6,5 @@ enum class LastOperation {
     SET_MTU,
     WRITE_CHARACTERISTIC,
     READ_CHARACTERISTIC,
+    BONDING,
 }

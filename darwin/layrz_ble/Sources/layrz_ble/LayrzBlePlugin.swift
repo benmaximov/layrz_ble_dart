@@ -10,6 +10,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
     static var startScanChannel: FlutterMethodChannel?
     static var stopScanChannel: FlutterMethodChannel?
     static var connectChannel: FlutterMethodChannel?
+    static var pairChannel: FlutterMethodChannel?
     static var disconnectChannel: FlutterMethodChannel?
     static var discoverServicesChannel: FlutterMethodChannel?
     static var setMtuChannel: FlutterMethodChannel?
@@ -28,12 +29,12 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
     var connectedPeripheral: CBPeripheral?
     var servicesAndCharacteristics: [String: BleService?] = [:]
     var lastOp: LastOperation?
-    
+
     override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
     }
-    
+
     public static func register(with registrar: FlutterPluginRegistrar) {
         let instance = LayrzBlePlugin()
 
@@ -47,6 +48,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
         startScanChannel = FlutterMethodChannel(name: "com.layrz.ble.startScan", binaryMessenger: messenger)
         stopScanChannel = FlutterMethodChannel(name: "com.layrz.ble.stopScan", binaryMessenger: messenger)
         connectChannel = FlutterMethodChannel(name: "com.layrz.ble.connect", binaryMessenger: messenger)
+        pairChannel = FlutterMethodChannel(name: "com.layrz.ble.pair", binaryMessenger: messenger)
         disconnectChannel = FlutterMethodChannel(name: "com.layrz.ble.disconnect", binaryMessenger: messenger)
         discoverServicesChannel = FlutterMethodChannel(name: "com.layrz.ble.discoverServices", binaryMessenger: messenger)
         setMtuChannel = FlutterMethodChannel(name: "com.layrz.ble.setMtu", binaryMessenger: messenger)
@@ -60,6 +62,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
         registrar.addMethodCallDelegate(instance, channel: startScanChannel!)
         registrar.addMethodCallDelegate(instance, channel: stopScanChannel!)
         registrar.addMethodCallDelegate(instance, channel: connectChannel!)
+        registrar.addMethodCallDelegate(instance, channel: pairChannel!)
         registrar.addMethodCallDelegate(instance, channel: disconnectChannel!)
         registrar.addMethodCallDelegate(instance, channel: discoverServicesChannel!)
         registrar.addMethodCallDelegate(instance, channel: setMtuChannel!)
@@ -99,10 +102,10 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 result(FlutterMethodNotImplemented)
             }
         }
-        
+
         private func checkCapabilities(result: @escaping FlutterResult) {
             let auth = CBCentralManager.authorization
-            
+
             return result([
                 "locationPermission": auth == .allowedAlways,
                 "bluetoothPermission": auth == .allowedAlways,
@@ -110,12 +113,12 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 "bluetoothConnectPermission": auth == .allowedAlways
             ])
         }
-        
+
         private func startScan(call: FlutterMethodCall, result: @escaping FlutterResult) {
             if (isScanning) {
                 return result(true)
             }
-            
+
             let auth = CBCentralManager.authorization
             if (auth != .allowedAlways) {
                 log("Bluetooth permission denied - \(auth)")
@@ -125,24 +128,24 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 log("Bluetooth is not turned on - \(centralManager.state)")
                 return result(false)
             }
-            
+
             let args = call.arguments as? [String: Any] ?? [:]
             filteredUuid = (args["macAddress"] as? String)?.uppercased()
             centralManager.scanForPeripherals(withServices: nil, options: nil)
             isScanning = true
             return result(true)
         }
-        
+
         private func stopScan(call: FlutterMethodCall, result: @escaping FlutterResult) {
             if (!isScanning) {
                 return result(true)
             }
-            
+
             centralManager.stopScan()
             isScanning = false
             return result(true)
         }
-        
+
         private func connect(call: FlutterMethodCall, result: @escaping FlutterResult) {
             connectedPeripheral = nil
             let uuid = (call.arguments as? String)?.uppercased()
@@ -150,36 +153,36 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 log("UUID not defined")
                 return result(false)
             }
-            
+
             if let device = devices[uuid!] {
                 if (isScanning) {
                     centralManager.stopScan()
                     isScanning = false
                 }
-                
+
                 lastResult = result
-                
+
                 centralManager.connect(device)
             } else {
                 log("Device not found")
                 return result(false)
             }
         }
-        
+
         private func disconnect(call: FlutterMethodCall, result: @escaping FlutterResult) {
             if (connectedPeripheral != nil) {
                 centralManager.cancelPeripheralConnection(connectedPeripheral!)
             }
-            
+
             servicesAndCharacteristics.removeAll()
             return result(true)
         }
-        
+
         private func discoverServices(call: FlutterMethodCall, result: @escaping FlutterResult) {
             if (connectedPeripheral == nil) {
                 return result(nil)
             }
-            
+
             var output: [[String: Any]] = []
             for (_, service) in servicesAndCharacteristics {
                 if service == nil { continue }
@@ -187,16 +190,16 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
             }
             return result(output)
         }
-        
+
         private func setMtu(call: FlutterMethodCall, result: @escaping FlutterResult) {
             if connectedPeripheral == nil {
                 return result(nil)
             }
-            
+
             let mtu = connectedPeripheral!.maximumWriteValueLength(for: .withResponse)
             return result(mtu)
         }
-        
+
         private func writeCharacteristic(call: FlutterMethodCall, result: @escaping FlutterResult) {
             let args = call.arguments as? [String: Any] ?? [:]
             let serviceUuid = (args["serviceUuid"] as? String)?.uppercased()
@@ -204,40 +207,40 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 log("Service UUID not defined")
                 return result(false)
             }
-            
+
             guard let service = servicesAndCharacteristics.first(where: { $0.value != nil && $0.value!.uuidString == serviceUuid })?.value else {
                 log("Service not found")
                 return result(false)
             }
-            
+
             let characteristicUuid = (args["characteristicUuid"] as? String)?.uppercased()
             if characteristicUuid == nil {
                 log("Characteristic UUID not defined")
                 return result(false)
             }
-            
+
             guard let characteristic = service.characteristics.first(where: { $0.uuidString == characteristicUuid }) else {
                 log("Characteristic not found")
                 return result(false)
             }
-            
+
             let payload = args["payload"] as? FlutterStandardTypedData
             if payload == nil {
                 log("Payload not defined")
                 return result(false)
             }
-            
+
             let withResponse = args["withResponse"] as? Bool ?? false
-            
+
             if connectedPeripheral == nil {
                 log("Device is not connected")
                 return result(false)
             }
-            
+
             lastResult = result
             connectedPeripheral!.writeValue(payload!.data, for: characteristic.characteristic, type: withResponse ? .withResponse : .withoutResponse)
         }
-        
+
         private func readCharacteristic(call: FlutterMethodCall, result: @escaping FlutterResult) {
             let args = call.arguments as? [String: Any] ?? [:]
             let serviceUuid = (args["serviceUuid"] as? String)?.uppercased()
@@ -245,37 +248,37 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 log("Service UUID not defined")
                 return result(nil)
             }
-            
+
             guard let service = servicesAndCharacteristics.first(where: { $0.value != nil && $0.value!.uuidString == serviceUuid })?.value else {
                 log("Service not found")
                 return result(nil)
             }
-            
+
             let characteristicUuid = (args["characteristicUuid"] as? String)?.uppercased()
             if characteristicUuid == nil {
                 log("Characteristic UUID not defined")
                 return result(nil)
             }
-            
+
             guard let characteristic = service.characteristics.first(where: { $0.uuidString == characteristicUuid }) else {
                 log("Characteristic not found")
                 return result(nil)
             }
-            
+
             if connectedPeripheral == nil {
                 log("Device is not connected")
                 return result(nil)
             }
-            
+
             if characteristic.characteristic.isNotifying {
                 log("Characteristic is notifying, cannot read it.")
                 return result(nil)
             }
-            
+
             lastResult = result
             connectedPeripheral!.readValue(for: characteristic.characteristic)
         }
-        
+
         private func startNotify(call: FlutterMethodCall, result: @escaping FlutterResult) {
             let args = call.arguments as? [String: Any] ?? [:]
             let serviceUuid = (args["serviceUuid"] as? String)?.uppercased()
@@ -283,33 +286,33 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 log("Service UUID not defined")
                 return result(nil)
             }
-            
+
             guard let service = servicesAndCharacteristics.first(where: { $0.value != nil && $0.value!.uuidString == serviceUuid })?.value else {
                 log("Service not found")
                 return result(false)
             }
-            
+
             let characteristicUuid = (args["characteristicUuid"] as? String)?.uppercased()
             if characteristicUuid == nil {
                 log("Characteristic UUID not defined")
                 return result(nil)
             }
-            
+
             guard let characteristic = service.characteristics.first(where: { $0.uuidString == characteristicUuid }) else {
                 log("Characteristic not found")
                 return result(false)
             }
-            
+
             if connectedPeripheral == nil {
                 log("Device is not connected")
                 return result(false)
             }
-            
+
             connectedPeripheral!.setNotifyValue(true, for: characteristic.characteristic)
             log("Notify started")
             return result(true)
         }
-        
+
         private func stopNotify(call: FlutterMethodCall, result: @escaping FlutterResult) {
             let args = call.arguments as? [String: Any] ?? [:]
             let serviceUuid = (args["serviceUuid"] as? String)?.uppercased()
@@ -317,46 +320,46 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 log("Service UUID not defined")
                 return result(nil)
             }
-            
+
             guard let service = servicesAndCharacteristics.first(where: { $0.value != nil && $0.value!.uuidString == serviceUuid })?.value else {
                 log("Service not found")
                 return result(false)
             }
-            
+
             let characteristicUuid = (args["characteristicUuid"] as? String)?.uppercased()
             if characteristicUuid == nil {
                 log("Characteristic UUID not defined")
                 return result(nil)
             }
-            
+
             guard let characteristic = service.characteristics.first(where: { $0.uuidString == characteristicUuid }) else {
                 log("Characteristic not found")
                 return result(false)
             }
-            
+
             if connectedPeripheral == nil {
                 log("Device is not connected")
                 return result(false)
             }
-            
+
             connectedPeripheral!.setNotifyValue(false, for: characteristic.characteristic)
             return result(true)
         }
-        
+
         // Peripheral delegate
         public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: (any Error)?) {
             if let error = error {
                 log("Error updating notification state: \(error.localizedDescription)")
                 return
             }
-            
+
             if characteristic.isNotifying {
                 log("Notification started")
             } else {
                 log("Notification stopped")
             }
         }
-        
+
         public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: (any Error)?) {
             if let error = error {
                 log("Error writing value: \(error.localizedDescription)")
@@ -364,12 +367,12 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 lastResult = nil
                 return
             }
-            
+
             log("Payload sent successfully")
             lastResult?(true)
             lastResult = nil
         }
-        
+
         public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: (any Error)?) {
             if let error = error {
                 log("Error reading value: \(error.localizedDescription)")
@@ -377,21 +380,21 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 lastResult = nil
                 return
             }
-            
+
             if characteristic.isNotifying {
                 let notification: [String: Any?] = [
                     "serviceUuid": characteristic.service?.uuid.uuidString.uppercased(),
                     "characteristicUuid": characteristic.uuid.uuidString.uppercased(),
                     "value": characteristic.value
                 ]
-                
+
                 LayrzBlePlugin.eventsChannel!.invokeMethod("onNotify", arguments: notification)
             } else {
                 lastResult?(characteristic.value)
                 lastResult = nil
             }
         }
-        
+
         public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: (any Error)?) {
             let uuid = peripheral.identifier.uuidString.uppercased()
             log("Discovering services of \(uuid)")
@@ -400,25 +403,25 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 lastResult?(nil)
                 return
             }
-            
+
             guard let services = peripheral.services else { return }
-            
+
             for service in services {
                 servicesAndCharacteristics.updateValue(nil, forKey: service.uuid.uuidString.uppercased())
                 peripheral.discoverCharacteristics(nil, for: service)
             }
         }
-        
+
         public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: (any Error)?) {
             if let error = error {
                 log("Error discovering services - \(error.localizedDescription)")
                 return
             }
-            
+
             let serviceUuid = service.uuid.uuidString.uppercased()
-            
+
             guard let characteristics = service.characteristics else { return }
-            
+
             var characteristicsParsed: [BleCharacteristic] = []
             for characteristic in characteristics {
                 var propertiesList: [String] = []
@@ -431,14 +434,14 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 if properties.contains(.authenticatedSignedWrites) { propertiesList.append("AUTH_SIGN_WRITES") }
                 if properties.contains(.broadcast) { propertiesList.append("BROADCAST") }
                 if properties.contains(.extendedProperties) { propertiesList.append("EXTENDED_PROP") }
-                
+
                 characteristicsParsed.append(BleCharacteristic(
                     uuid: characteristic.uuid,
                     properties: propertiesList,
                     characteristic: characteristic
                 ))
             }
-            
+
             servicesAndCharacteristics.updateValue(
                 BleService(
                     uuid: service.uuid,
@@ -447,7 +450,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 ),
                 forKey: serviceUuid
             )
-            
+
             log("Checking if all services are discovered")
             for (uuid, service) in servicesAndCharacteristics {
                 if (service?.characteristics.isEmpty ?? true) {
@@ -455,10 +458,10 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                     return
                 }
             }
-            
+
             lastResult?(true)
         }
-        
+
         // Central manager delegate
         public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: (any Error)?) {
             let uuid = peripheral.identifier.uuidString.uppercased()
@@ -467,7 +470,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
             LayrzBlePlugin.eventsChannel?.invokeMethod("onEvent", arguments: "DISCONNECTED")
             lastResult?(false)
         }
-        
+
         public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
             let uuid = peripheral.identifier.uuidString.uppercased()
             log("Disconnected from \(uuid) - \(error?.localizedDescription ?? "")")
@@ -475,16 +478,16 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
             LayrzBlePlugin.eventsChannel?.invokeMethod("onEvent", arguments: "DISCONNECTED")
             lastResult?(false)
         }
-        
+
         public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
             let name = peripheral.name
             let uuid = peripheral.identifier.uuidString.uppercased()
-            
+
             if (filteredUuid != nil && uuid != filteredUuid) {
                 // log("Device detected but rejected due to MAC Address filter")
                 return
             }
-            
+
             var manufacturerData: [[String: Any]] = []
             if let rawManufacturerData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data {
                 // Extract company ID (first 2 bytes) and manufacturer data
@@ -498,7 +501,7 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                     ])
                 }
             }
-            
+
             var serviceData: [[String: Any]] = []
             if let raw = advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data] {
                 for (serviceUuid, data) in raw {
@@ -508,12 +511,12 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                     ])
                 }
             }
-            
+
             var txPower: Int? = nil
             if let rawPower = advertisementData[CBAdvertisementDataTxPowerLevelKey] as? NSNumber {
                 txPower = rawPower.intValue
             }
-            
+
             devices.updateValue(peripheral, forKey: uuid)
             LayrzBlePlugin.eventsChannel?.invokeMethod("onScan", arguments: [
                 "name": name ?? "Unknown",
@@ -524,20 +527,20 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 "txPower": txPower
             ])
         }
-        
+
         public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
             if (isScanning) {
                 centralManager.stopScan()
                 isScanning = false
                 LayrzBlePlugin.eventsChannel?.invokeMethod("onEvent", arguments: "SCAN_STOPPED")
             }
-            
+
             peripheral.delegate = self
             connectedPeripheral = peripheral
             LayrzBlePlugin.eventsChannel?.invokeMethod("onEvent", arguments: "CONNECTED")
             peripheral.discoverServices(nil)
         }
-        
+
         public func centralManagerDidUpdateState(_ central: CBCentralManager) {
             switch central.state {
             case .poweredOn:
@@ -556,11 +559,11 @@ public class LayrzBlePlugin: NSObject, FlutterPlugin, CBCentralManagerDelegate, 
                 log("Unknown Bluetooth state \(central.state)")
             }
         }
-        
+
         private func log(_ message: String) {
             NSLog("LayrzBlePlugin/darwin: \(message)")
         }
-    
+
     private func standarizeServiceUuid(_ uuid: CBUUID) -> Int {
         return Int(uuid.data.withUnsafeBytes { $0.load(as: UInt16.self) }.littleEndian)
     }

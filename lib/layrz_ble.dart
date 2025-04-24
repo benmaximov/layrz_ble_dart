@@ -68,6 +68,12 @@ class LayrzBle {
   /// [disconnect] disconnects from any connected BLE device.
   Future<bool?> disconnect() => LayrzBlePlatform.instance.disconnect();
 
+  /// [connect] pairs to a BLE device.
+  Future<bool?> pair({required String macAddress}) => LayrzBlePlatform.instance.pair(macAddress: macAddress);
+
+  /// [connect] connects to a BLE device.
+  Future<bool?> isBonded({required String macAddress}) => LayrzBlePlatform.instance.isBonded(macAddress: macAddress);
+
   /// [discoverServices] discovers the services of a BLE device.
   Future<List<BleService>?> discoverServices({
     /// [timeout] is the duration to wait for the services to be discovered.

@@ -32,8 +32,10 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
   final Map<BlueZUUID, StreamSubscription<List<String>>> _notifications = {};
   final List<BleService> _services = [];
 
-  final StreamController<BleDevice> _scanController = StreamController<BleDevice>.broadcast();
-  final StreamController<BleEvent> _eventController = StreamController<BleEvent>.broadcast();
+  final StreamController<BleDevice> _scanController =
+      StreamController<BleDevice>.broadcast();
+  final StreamController<BleEvent> _eventController =
+      StreamController<BleEvent>.broadcast();
   final StreamController<BleCharacteristicNotification> _notifyController =
       StreamController<BleCharacteristicNotification>.broadcast();
 
@@ -44,7 +46,8 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
   Stream<BleEvent> get onEvent => _eventController.stream;
 
   @override
-  Stream<BleCharacteristicNotification> get onNotify => _notifyController.stream;
+  Stream<BleCharacteristicNotification> get onNotify =>
+      _notifyController.stream;
 
   @override
   Future<BleCapabilities> checkCapabilities() async {
@@ -65,7 +68,10 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
   }
 
   @override
-  Future<bool?> startScan({String? macAddress, List<String>? servicesUuids}) async {
+  Future<bool?> startScan({
+    String? macAddress,
+    List<String>? servicesUuids,
+  }) async {
     if (_client == null) {
       log("Error initializing BlueZClient");
       return false;
@@ -76,11 +82,18 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
 
     try {
       final adapter = _client!.adapters.firstOrNull;
-      await adapter?.startDiscovery();
 
+      var toRem = [];
       for (final device in _client!.devices) {
+        //if (!device.paired) toRem.add(device);
         _onScanAdded(device);
       }
+      for (var device in toRem) {
+        adapter?.removeDevice(device);
+      }
+
+      await adapter?.setDiscoveryFilter(duplicateData: true, transport: "le");
+      await adapter?.startDiscovery();
 
       return true;
     } catch (e) {
@@ -98,6 +111,12 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
       final adapter = _client?.adapters.firstOrNull;
       await adapter?.stopDiscovery();
       _isScanning = false;
+
+      for (var itm in _subscriptions.values) {
+        itm.cancel();
+      }
+      _subscriptions.clear();
+
       return true;
     } catch (e) {
       log("Error initializing BlueZClient: $e");
@@ -134,7 +153,7 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
       return false;
     }
 
-    stopScan();
+    //stopScan();
 
     if (_devices[macAddress.toLowerCase()] == null) {
       log("Device not found: $macAddress");
@@ -150,29 +169,75 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
 
     for (final service in _connectedDevice!.gattServices) {
       for (final characteristic in service.characteristics) {
-        _services.add(BleService(
-          uuid: service.uuid.toString(),
-          characteristics: [
-            BleCharacteristic(
-              uuid: characteristic.uuid.toString(),
-              properties: [
-                if (characteristic.flags.contains(BlueZGattCharacteristicFlag.read)) BleProperty.read,
-                if (characteristic.flags.contains(BlueZGattCharacteristicFlag.write)) BleProperty.write,
-                if (characteristic.flags.contains(BlueZGattCharacteristicFlag.notify)) BleProperty.notify,
-                if (characteristic.flags.contains(BlueZGattCharacteristicFlag.broadcast)) BleProperty.broadcast,
-                if (characteristic.flags.contains(BlueZGattCharacteristicFlag.writeWithoutResponse))
-                  BleProperty.writeWithoutResponse,
-                if (characteristic.flags.contains(BlueZGattCharacteristicFlag.indicate)) BleProperty.indicate,
-                if (characteristic.flags.contains(BlueZGattCharacteristicFlag.authenticatedSignedWrites))
-                  BleProperty.authenticatedSignedWrites,
-                if (characteristic.flags.contains(BlueZGattCharacteristicFlag.extendedProperties))
-                  BleProperty.extendedProperties,
-              ],
-            ),
-          ],
-        ));
+        _services.add(
+          BleService(
+            uuid: service.uuid.toString(),
+            characteristics: [
+              BleCharacteristic(
+                uuid: characteristic.uuid.toString(),
+                properties: [
+                  if (characteristic.flags.contains(
+                    BlueZGattCharacteristicFlag.read,
+                  ))
+                    BleProperty.read,
+                  if (characteristic.flags.contains(
+                    BlueZGattCharacteristicFlag.write,
+                  ))
+                    BleProperty.write,
+                  if (characteristic.flags.contains(
+                    BlueZGattCharacteristicFlag.notify,
+                  ))
+                    BleProperty.notify,
+                  if (characteristic.flags.contains(
+                    BlueZGattCharacteristicFlag.broadcast,
+                  ))
+                    BleProperty.broadcast,
+                  if (characteristic.flags.contains(
+                    BlueZGattCharacteristicFlag.writeWithoutResponse,
+                  ))
+                    BleProperty.writeWithoutResponse,
+                  if (characteristic.flags.contains(
+                    BlueZGattCharacteristicFlag.indicate,
+                  ))
+                    BleProperty.indicate,
+                  if (characteristic.flags.contains(
+                    BlueZGattCharacteristicFlag.authenticatedSignedWrites,
+                  ))
+                    BleProperty.authenticatedSignedWrites,
+                  if (characteristic.flags.contains(
+                    BlueZGattCharacteristicFlag.extendedProperties,
+                  ))
+                    BleProperty.extendedProperties,
+                ],
+              ),
+            ],
+          ),
+        );
       }
     }
+    return true;
+  }
+
+  @override
+  Future<bool?> pair({required String macAddress}) async {
+    if (_client == null) {
+      log("Error initializing BlueZClient");
+      return false;
+    }
+
+    //stopScan();
+
+    if (_devices[macAddress.toLowerCase()] == null) {
+      log("Device not found: $macAddress");
+      return false;
+    }
+
+    final device = _devices[macAddress.toLowerCase()]!;
+    await device.pair();
+    await device.setTrusted(true);
+
+    _eventController.add(BleEvent.paired);
+
     return true;
   }
 
@@ -220,7 +285,8 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     }
 
     final characteristic = service.characteristics.firstWhereOrNull((element) {
-      return element.uuid.toString().toLowerCase() == characteristicUuid.toLowerCase();
+      return element.uuid.toString().toLowerCase() ==
+          characteristicUuid.toLowerCase();
     });
 
     if (characteristic == null) {
@@ -252,7 +318,8 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     }
 
     final characteristic = service.characteristics.firstWhereOrNull((element) {
-      return element.uuid.toString().toLowerCase() == characteristicUuid.toLowerCase();
+      return element.uuid.toString().toLowerCase() ==
+          characteristicUuid.toLowerCase();
     });
 
     if (characteristic == null) {
@@ -288,7 +355,8 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     }
 
     final characteristic = service.characteristics.firstWhereOrNull((element) {
-      return element.uuid.toString().toLowerCase() == characteristicUuid.toLowerCase();
+      return element.uuid.toString().toLowerCase() ==
+          characteristicUuid.toLowerCase();
     });
 
     if (characteristic == null) {
@@ -301,15 +369,18 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
       return false;
     }
 
-    _notifications[characteristic.uuid] = characteristic.propertiesChanged.listen((events) {
+    _notifications[characteristic.uuid] =
+        characteristic.propertiesChanged.listen((events) {
       for (final event in events) {
         if (event == 'Value') {
           final receivedValue = characteristic.value;
-          _notifyController.add(BleCharacteristicNotification(
-            serviceUuid: serviceUuid,
-            characteristicUuid: characteristicUuid,
-            value: Uint8List.fromList(receivedValue),
-          ));
+          _notifyController.add(
+            BleCharacteristicNotification(
+              serviceUuid: serviceUuid,
+              characteristicUuid: characteristicUuid,
+              value: Uint8List.fromList(receivedValue),
+            ),
+          );
         }
       }
     });
@@ -336,7 +407,8 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     }
 
     final characteristic = service.characteristics.firstWhereOrNull((element) {
-      return element.uuid.toString().toLowerCase() == characteristicUuid.toLowerCase();
+      return element.uuid.toString().toLowerCase() ==
+          characteristicUuid.toLowerCase();
     });
 
     if (characteristic == null) {
@@ -362,13 +434,33 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     debugPrint("LayrzBlePlugin/Linux: $message");
   }
 
+  final Map<String, StreamSubscription> _subscriptions = {};
+
   void _onScanAdded(BlueZDevice device) {
     if (!_isScanning) return;
-    if (_macAddressFilter != null && _macAddressFilter!.toLowerCase() != device.address.toLowerCase()) {
+    if (_macAddressFilter != null &&
+        _macAddressFilter!.toLowerCase() != device.address.toLowerCase()) {
       return;
     }
 
     _scanController.add(_compose(device));
+
+    if (device.address.startsWith("28")) {
+      //print(device.address);
+      //print(device.manufacturerData);
+    }
+
+    if (!_subscriptions.containsKey(device.address.toLowerCase())) {
+      _subscriptions[device.address.toLowerCase()] =
+          device.propertiesChanged.listen((List<String> lst) {
+        _scanController.add(_compose(device));
+
+        if (device.address.startsWith("28")) {
+          //print("PC ${device.address} $lst");
+          //print(device.manufacturerData);
+        }
+      });
+    }
   }
 
   BleDevice _compose(BlueZDevice device) {
@@ -379,10 +471,12 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
 
       if (data.isEmpty) continue;
 
-      manufacturerData.add(BleManufacturerData(
-        companyId: companyId.id,
-        data: Uint8List.fromList(data),
-      ));
+      manufacturerData.add(
+        BleManufacturerData(
+          companyId: companyId.id,
+          data: Uint8List.fromList(data),
+        ),
+      );
     }
 
     List<BleServiceData> serviceData = [];
@@ -393,7 +487,9 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
       final data = entry.value;
       if (data.isEmpty) continue;
 
-      serviceData.add(BleServiceData(uuid: serviceUuid, data: Uint8List.fromList(data)));
+      serviceData.add(
+        BleServiceData(uuid: serviceUuid, data: Uint8List.fromList(data)),
+      );
     }
 
     _devices[device.address.toLowerCase()] = device;
@@ -409,9 +505,6 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
   }
 
   int _standarizeServiceUuid(List<int> bytes) {
-    return int.tryParse(bytes.map((e) {
-          return e.toRadixString(16).padLeft(2, '0');
-        }).join('')) ??
-        0x0000;
+    return (bytes[0] << 8) | bytes[1];
   }
 }

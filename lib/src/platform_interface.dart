@@ -73,6 +73,20 @@ abstract class LayrzBlePlatform extends PlatformInterface {
   /// [disconnect] disconnects from any connected BLE device.
   Future<bool?> disconnect() => throw UnimplementedError('disconnect() has not been implemented.');
 
+
+  Future<bool?> pair({
+    /// [macAddress] is the MAC address or UUID of the device to pair.
+    required String macAddress,
+  }) =>
+      throw UnimplementedError('pair() has not been implemented.');
+
+
+  Future<bool?> isBonded({
+    /// [macAddress] is the MAC address or UUID of the device to pair.
+    required String macAddress,
+  }) =>
+      throw UnimplementedError('pair() has not been implemented.');
+
   /// [discoverServices] discovers the services of a BLE device.
   Future<List<BleService>?> discoverServices({
     /// [timeout] is the duration to wait for the services to be discovered.

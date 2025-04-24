@@ -55,18 +55,7 @@ namespace layrz_ble
         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
       );
 
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> checkCapabilitiesChannel;
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> startScanChannel;
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> stopScanChannel;
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> connectChannel;
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> disconnectChannel;
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> discoverServicesChannel;
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> setMtuChannel;
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> writeCharacteristicChannel;
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> readCharacteristicChannel;
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> startNotifyChannel;
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> stopNotifyChannel;
-      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> eventsChannel;
+      static std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> methodChannel;
       static std::string filteredDeviceId;
 
       std::unordered_map<std::string, BleService> servicesAndCharacteristics{};
@@ -105,6 +94,11 @@ namespace layrz_ble
         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
       );
 
+      winrt::fire_and_forget pair(
+        const flutter::MethodCall<flutter::EncodableValue> &method_call,
+        std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
+      );
+
       winrt::fire_and_forget disconnect(
         const flutter::MethodCall<flutter::EncodableValue> &method_call,
         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
@@ -116,6 +110,11 @@ namespace layrz_ble
       );
 
       winrt::fire_and_forget setMtu(
+        const flutter::MethodCall<flutter::EncodableValue> &method_call,
+        std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
+      );
+
+      winrt::fire_and_forget isBonded(
         const flutter::MethodCall<flutter::EncodableValue> &method_call,
         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
       );

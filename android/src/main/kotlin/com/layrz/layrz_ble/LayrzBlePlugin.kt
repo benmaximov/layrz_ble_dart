@@ -11,11 +11,16 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.BroadcastReceiver
+import android.content.Context
+
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -40,18 +45,8 @@ import java.util.UUID
 
 class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     PluginRegistry.ActivityResultListener {
-    private lateinit var checkCapabilitiesChannel: MethodChannel
-    private lateinit var startScanChannel: MethodChannel
-    private lateinit var stopScanChannel: MethodChannel
-    private lateinit var connectChannel: MethodChannel
-    private lateinit var disconnectChannel: MethodChannel
-    private lateinit var discoverServicesChannel: MethodChannel
-    private lateinit var setMtuChannel: MethodChannel
-    private lateinit var writeCharacteristicChannel: MethodChannel
-    private lateinit var readCharacteristicChannel: MethodChannel
-    private lateinit var startNotifyChannel: MethodChannel
-    private lateinit var stopNotifyChannel: MethodChannel
-    private lateinit var eventsChannel: MethodChannel
+
+    private lateinit var channel: MethodChannel
 
     private lateinit var context: android.content.Context
     private var bluetooth: BluetoothManager? = null
@@ -61,7 +56,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     private var startScanResult: Result? = null
     private var stopScanResult: Result? = null
     private var connectResult: Result? = null
-    private var disconnectResult: Result? = null
+    private var bondResult: Result? = null
     private var discoverServicesResult: Result? = null
     private var setMtuResult: Result? = null
     private var writeCharacteristicResult: Result? = null
@@ -138,7 +133,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                 txPower = null
             }
 
-            eventsChannel.invokeMethod(
+            channel.invokeMethod(
                 "onScan",
                 mapOf(
                     "name" to name,
@@ -162,15 +157,24 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             newState: Int
         ) {
             super.onConnectionStateChange(gatt, status, newState)
+
+
             if (connectedDevice == null) return
+
+            Log.d(TAG, "lastOperation = ${lastOperation}")
+            Log.d(TAG, "status = ${status}")
+            Log.d(TAG, "newState = ${newState}")
+
+
             if (lastOperation != LastOperation.CONNECT) {
-                if (status == BluetoothGatt.STATE_DISCONNECTED) {
+                if (newState == BluetoothGatt.STATE_DISCONNECTED) {
                     Log.d(TAG, "Disconnected")
                     gatt?.disconnect()
+                    gatt?.close()
                     connectedDevice = null
                     servicesAndCharacteristics.clear()
                     Handler(Looper.getMainLooper()).post {
-                        eventsChannel.invokeMethod(
+                        channel.invokeMethod(
                             "onEvent",
                             "DISCONNECTED"
                         )
@@ -179,6 +183,8 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                 }
             }
 
+
+
             if (newState == android.bluetooth.BluetoothProfile.STATE_CONNECTED) {
                 connectedDevice = gatt!!.device
                 servicesAndCharacteristics.clear()
@@ -186,6 +192,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                 gatt.discoverServices()
             } else {
                 Log.d(TAG, "Connection failed")
+                gatt?.close()
                 connectResult?.success(false)
                 connectResult = null
             }
@@ -201,7 +208,12 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             if (gatt == null) return
 
             if (status == BluetoothGatt.GATT_SUCCESS) {
+
+
                 for (service in gatt.services) {
+
+                    Log.d(TAG, "Service ${service.uuid}")
+
                     val characteristics = mutableListOf<BleCharacteristic>()
                     for (characteristic in service.characteristics) {
                         val properties = characteristic.properties
@@ -331,7 +343,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             )
 
             Handler(Looper.getMainLooper()).post {
-                eventsChannel.invokeMethod(
+                channel.invokeMethod(
                     "onNotify",
                     mapOf(
                         "serviceUuid" to characteristic.service.uuid.toString().uppercase().trim(),
@@ -351,6 +363,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         Log.d(TAG, "onAttachedToActivity")
         activity = binding.activity
+
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
@@ -371,47 +384,52 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     }
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        checkCapabilitiesChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble.checkCapabilities")
-        checkCapabilitiesChannel.setMethodCallHandler(this)
-        startScanChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble.startScan")
-        startScanChannel.setMethodCallHandler(this)
-        stopScanChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble.stopScan")
-        stopScanChannel.setMethodCallHandler(this)
-        connectChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble.connect")
-        connectChannel.setMethodCallHandler(this)
-        disconnectChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble.disconnect")
-        disconnectChannel.setMethodCallHandler(this)
-        discoverServicesChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble.discoverServices")
-        discoverServicesChannel.setMethodCallHandler(this)
-        setMtuChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble.setMtu")
-        setMtuChannel.setMethodCallHandler(this)
-        writeCharacteristicChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble.writeCharacteristic")
-        writeCharacteristicChannel.setMethodCallHandler(this)
-        readCharacteristicChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble.readCharacteristic")
-        readCharacteristicChannel.setMethodCallHandler(this)
-        startNotifyChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble.startNotify")
-        startNotifyChannel.setMethodCallHandler(this)
-        stopNotifyChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble.stopNotify")
-        stopNotifyChannel.setMethodCallHandler(this)
-        eventsChannel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble.events")
-        eventsChannel.setMethodCallHandler(this)
+
+        channel = MethodChannel(flutterPluginBinding.binaryMessenger, "com.layrz.ble")
+        channel.setMethodCallHandler(this)
 
         context = flutterPluginBinding.applicationContext
+
+        Log.d(TAG, "Creating intent filter")
+        val filterAdapter = IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+        context.registerReceiver(mBondStateReceiver, filterAdapter)
+        Log.d(TAG, "Intent filter registered")
     }
 
+    private val mBondStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+
+            if (lastOperation != LastOperation.BONDING) return
+
+            val device = intent?.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+            val bondState = intent?.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.BOND_NONE)
+
+            Log.d(TAG, "bond state changed ${device} ${bondState}")
+
+            if (bondResult == null)
+                return
+
+            if (bondState == BluetoothDevice.BOND_BONDED)
+            {
+                bondResult?.success(true)
+                bondResult = null
+            }
+            else if (bondState != BluetoothDevice.BOND_BONDING)
+            {
+                bondResult?.success(false)
+                bondResult = null
+            }
+
+        }
+    }
+
+
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        checkCapabilitiesChannel.setMethodCallHandler(null)
-        startScanChannel.setMethodCallHandler(null)
-        stopScanChannel.setMethodCallHandler(null)
-        connectChannel.setMethodCallHandler(null)
-        disconnectChannel.setMethodCallHandler(null)
-        discoverServicesChannel.setMethodCallHandler(null)
-        setMtuChannel.setMethodCallHandler(null)
-        writeCharacteristicChannel.setMethodCallHandler(null)
-        readCharacteristicChannel.setMethodCallHandler(null)
-        startNotifyChannel.setMethodCallHandler(null)
-        stopNotifyChannel.setMethodCallHandler(null)
-        eventsChannel.setMethodCallHandler(null)
+
+        channel.setMethodCallHandler(null)
+
+        context.unregisterReceiver(mBondStateReceiver)
+
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
@@ -422,6 +440,8 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             "startScan" -> startScan(call = call, result = result)
             "stopScan" -> stopScan(result = result)
             "connect" -> connect(call = call, result = result)
+            "isBonded" -> isBonded(call = call, result = result)
+            "pair" -> pair(call = call, result = result)
             "disconnect" -> disconnect(result = result)
             "discoverServices" -> discoverServices(result = result)
             "setMtu" -> setMtu(call = call, result = result)
@@ -514,8 +534,24 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                 ) == PackageManager.PERMISSION_GRANTED
             }
 
-            if (!(perm1 && perm2 && perm3)) {
-                Log.d(TAG, "No location permission")
+            if (!perm2 ) {
+                Log.d(TAG, "No BLUETOOTH permission")
+                result.success(false)
+                return
+            }
+
+            if (!perm3 ) {
+
+                Log.d(TAG, "Build.VERSION.SDK_INT " + Build.VERSION.SDK_INT)
+                Log.d(TAG, "Build.VERSION_CODES.S " + Build.VERSION_CODES.S)
+
+                Log.d(TAG, "No BLUETOOTH_CONNECT permission")
+                result.success(false)
+                return
+            }
+
+           if (!perm1) {
+                Log.d(TAG, "No ACCESS_FINE_LOCATION permission")
                 result.success(false)
                 return
             }
@@ -600,6 +636,31 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         filteredMacAddress = null
     }
 
+
+    private fun isBonded(call: MethodCall, result: Result) {
+        searchingMacAddress = call.arguments as String?
+        if (searchingMacAddress == null) {
+            Log.d(TAG, "No macAddress provided")
+            result.success(false)
+            connectResult = null
+            return
+        }
+
+        if (!devices.containsKey(searchingMacAddress!!)) {
+            Log.d(TAG, "Device not found")
+            result.success(false)
+            connectResult = null
+            return
+        }
+
+        val dev = devices[searchingMacAddress!!]!!
+
+        if (dev.getBondState() == BluetoothDevice.BOND_BONDED)
+            result.success(true)
+        else
+            result.success(false)
+    }
+
     /* Connects to a BLE device */
     @SuppressLint("MissingPermission")
     private fun connect(call: MethodCall, result: Result) {
@@ -619,17 +680,20 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             return
         }
 
-        if (isScanning) {
+        /*if (isScanning) {
             isScanning = false
             eventsChannel.invokeMethod("onEvent", "SCAN_STOPPED")
             bluetooth!!.adapter.bluetoothLeScanner.stopScan(scanCallback)
-        }
+        }*/
+
+
 
         connectedDevice = devices[searchingMacAddress!!]!!
+        Log.d(TAG, "connecting to $connectedDevice")
         connectResult = result
         lastOperation = LastOperation.CONNECT
-        gatt = connectedDevice!!.connectGatt(context, false, gattCallback)
-        gatt!!.connect()
+        gatt = connectedDevice!!.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        //gatt!!.connect()
     }
 
     /* Disconnects from a BLE device */
@@ -638,13 +702,44 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         if (gatt == null) {
             Log.d(TAG, "No device connected")
             result.success(false)
-            disconnectResult = null
             return
         }
 
         gatt!!.disconnect()
+        gatt!!.close()
         result.success(true)
-        disconnectResult = null
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun pair(call: MethodCall, result: Result) {
+        searchingMacAddress = call.arguments as String?
+
+        if (searchingMacAddress == null) {
+            Log.d(TAG, "No macAddress provided")
+            result.success(false)
+            return
+        }
+
+        if (!devices.containsKey(searchingMacAddress!!)) {
+            Log.d(TAG, "Device not found")
+            result.success(false)
+            return
+        }
+
+        connectedDevice = devices[searchingMacAddress!!]!!
+        bondResult = result
+        lastOperation = LastOperation.BONDING
+
+        val bondState = connectedDevice!!.bondState
+        if (bondState == BluetoothDevice.BOND_NONE) {
+            Log.d(TAG, "Initiating bonding process")
+            connectedDevice!!.createBond()
+            //result.success(true)
+        } else {
+            Log.d(TAG, "Device already bonded")
+            bondResult = null
+            result.success(true)
+        }
     }
 
     /* Discovers the services of a BLE device */
@@ -1067,14 +1162,21 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                     LastOperation.SCAN -> {
                         bluetooth!!.adapter.bluetoothLeScanner.stopScan(scanCallback)
                         isScanning = false
-                        eventsChannel.invokeMethod("onEvent", "SCAN_STOPPED")
+                        channel.invokeMethod("onEvent", "SCAN_STOPPED")
                         startScanResult?.success(false)
                         startScanResult = null
                     }
                     LastOperation.CONNECT -> {
                         gatt?.disconnect()
+                        gatt?.close()
                         connectResult?.success(false)
                         connectResult = null
+                    }
+                    LastOperation.BONDING -> {
+                        gatt?.disconnect()
+                        gatt?.close()
+                        bondResult?.success(false)
+                        bondResult = null
                     }
                     LastOperation.SET_MTU -> {
                         setMtuResult?.success(null)
@@ -1108,7 +1210,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                     startScanResult?.success(true)
                     startScanResult = null
                 } else {
-                    Log.d(TAG, "No location permission")
+                    Log.d(TAG, "No BLUETOOTH_SCAN permission")
                     startScanResult?.success(false)
                     startScanResult = null
                 }
