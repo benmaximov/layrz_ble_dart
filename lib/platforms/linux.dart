@@ -3,9 +3,7 @@ import 'dart:async';
 import 'package:bluez/bluez.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
-import 'package:layrz_ble/src/platform_interface.dart';
-import 'package:layrz_ble/src/types.dart';
-import 'package:layrz_models/layrz_models.dart';
+import 'package:layrz_ble/layrz_ble.dart';
 
 class LayrzBlePluginLinux extends LayrzBlePlatform {
   LayrzBlePluginLinux() {
@@ -369,21 +367,21 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
       return false;
     }
 
-    _notifications[characteristic.uuid] =
-        characteristic.propertiesChanged.listen((events) {
-      for (final event in events) {
-        if (event == 'Value') {
-          final receivedValue = characteristic.value;
-          _notifyController.add(
-            BleCharacteristicNotification(
-              serviceUuid: serviceUuid,
-              characteristicUuid: characteristicUuid,
-              value: Uint8List.fromList(receivedValue),
-            ),
-          );
-        }
-      }
-    });
+    _notifications[characteristic.uuid] = characteristic.propertiesChanged
+        .listen((events) {
+          for (final event in events) {
+            if (event == 'Value') {
+              final receivedValue = characteristic.value;
+              _notifyController.add(
+                BleCharacteristicNotification(
+                  serviceUuid: serviceUuid,
+                  characteristicUuid: characteristicUuid,
+                  value: Uint8List.fromList(receivedValue),
+                ),
+              );
+            }
+          }
+        });
     await characteristic.startNotify();
     return true;
   }
@@ -451,15 +449,15 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     }
 
     if (!_subscriptions.containsKey(device.address.toLowerCase())) {
-      _subscriptions[device.address.toLowerCase()] =
-          device.propertiesChanged.listen((List<String> lst) {
-        _scanController.add(_compose(device));
+      _subscriptions[device.address.toLowerCase()] = device.propertiesChanged
+          .listen((List<String> lst) {
+            _scanController.add(_compose(device));
 
-        if (device.address.startsWith("28")) {
-          //print("PC ${device.address} $lst");
-          //print(device.manufacturerData);
-        }
-      });
+            if (device.address.startsWith("28")) {
+              //print("PC ${device.address} $lst");
+              //print(device.manufacturerData);
+            }
+          });
     }
   }
 

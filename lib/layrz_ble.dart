@@ -2,15 +2,22 @@ library layrz_ble;
 
 import 'dart:typed_data';
 
+import 'package:layrz_ble/src/ble.dart';
 import 'package:layrz_ble/src/types.dart';
-import 'package:layrz_models/layrz_models.dart';
 import 'src/platform_interface.dart';
 
 export 'src/platform_interface.dart';
 export 'src/method_channel.dart';
 export 'src/types.dart';
-export 'package:layrz_models/layrz_models.dart'
-    show BleDevice, BleService, BleCharacteristic, BleProperty, BleManufacturerData, BleServiceData;
+
+export 'package:layrz_ble/src/ble.dart'
+    show
+        BleDevice,
+        BleService,
+        BleCharacteristic,
+        BleProperty,
+        BleManufacturerData,
+        BleServiceData;
 
 export 'platforms/stub.dart' if (dart.library.io) 'platforms/linux.dart';
 
@@ -24,7 +31,8 @@ class LayrzBle {
   /// [onNotify] is a stream of BLE notifications.
   /// To add a new notification listener, use [startNotify] method.
   /// This stream will emit the raw bytes of the notification.
-  Stream<BleCharacteristicNotification> get onNotify => LayrzBlePlatform.instance.onNotify;
+  Stream<BleCharacteristicNotification> get onNotify =>
+      LayrzBlePlatform.instance.onNotify;
 
   /// [startScan] starts scanning for BLE devices.
   ///
@@ -41,8 +49,10 @@ class LayrzBle {
     /// be discovered.
     /// This property is only working on Web, other platforms will be ignored.
     List<String>? servicesUuids,
-  }) =>
-      LayrzBlePlatform.instance.startScan(macAddress: macAddress, servicesUuids: servicesUuids);
+  }) => LayrzBlePlatform.instance.startScan(
+    macAddress: macAddress,
+    servicesUuids: servicesUuids,
+  );
 
   /// [stopScan] stops scanning for BLE devices.
   ///
@@ -50,7 +60,8 @@ class LayrzBle {
   Future<bool?> stopScan() => LayrzBlePlatform.instance.stopScan();
 
   /// [checkCapabilities] checks if the device supports BLE.
-  Future<BleCapabilities> checkCapabilities() => LayrzBlePlatform.instance.checkCapabilities();
+  Future<BleCapabilities> checkCapabilities() =>
+      LayrzBlePlatform.instance.checkCapabilities();
 
   /// [setMtu] sets the MTU size for the BLE connection.
   /// The MTU size is the maximum number of bytes that can be sent in a
@@ -60,26 +71,29 @@ class LayrzBle {
   ///
   /// The return value is the new MTU size, after a negotion with
   /// the peripheral.
-  Future<int?> setMtu({required int newMtu}) => LayrzBlePlatform.instance.setMtu(newMtu: newMtu);
+  Future<int?> setMtu({required int newMtu}) =>
+      LayrzBlePlatform.instance.setMtu(newMtu: newMtu);
 
   /// [connect] connects to a BLE device.
-  Future<bool?> connect({required String macAddress}) => LayrzBlePlatform.instance.connect(macAddress: macAddress);
+  Future<bool?> connect({required String macAddress}) =>
+      LayrzBlePlatform.instance.connect(macAddress: macAddress);
 
   /// [disconnect] disconnects from any connected BLE device.
   Future<bool?> disconnect() => LayrzBlePlatform.instance.disconnect();
 
   /// [connect] pairs to a BLE device.
-  Future<bool?> pair({required String macAddress}) => LayrzBlePlatform.instance.pair(macAddress: macAddress);
+  Future<bool?> pair({required String macAddress}) =>
+      LayrzBlePlatform.instance.pair(macAddress: macAddress);
 
   /// [connect] connects to a BLE device.
-  Future<bool?> isBonded({required String macAddress}) => LayrzBlePlatform.instance.isBonded(macAddress: macAddress);
+  Future<bool?> isBonded({required String macAddress}) =>
+      LayrzBlePlatform.instance.isBonded(macAddress: macAddress);
 
   /// [discoverServices] discovers the services of a BLE device.
   Future<List<BleService>?> discoverServices({
     /// [timeout] is the duration to wait for the services to be discovered.
     Duration timeout = const Duration(seconds: 30),
-  }) =>
-      LayrzBlePlatform.instance.discoverServices(timeout: timeout);
+  }) => LayrzBlePlatform.instance.discoverServices(timeout: timeout);
 
   /// [writeCharacteristic] sends a payload to a BLE characteristic.
   ///
@@ -90,14 +104,13 @@ class LayrzBle {
     required Uint8List payload,
     Duration timeout = const Duration(seconds: 30),
     required bool withResponse,
-  }) =>
-      LayrzBlePlatform.instance.writeCharacteristic(
-        serviceUuid: serviceUuid,
-        characteristicUuid: characteristicUuid,
-        payload: payload,
-        timeout: timeout,
-        withResponse: withResponse,
-      );
+  }) => LayrzBlePlatform.instance.writeCharacteristic(
+    serviceUuid: serviceUuid,
+    characteristicUuid: characteristicUuid,
+    payload: payload,
+    timeout: timeout,
+    withResponse: withResponse,
+  );
 
   /// [readCharacteristic] reads the value of a BLE characteristic.
   /// The return value is the raw bytes of the characteristic.
@@ -106,11 +119,10 @@ class LayrzBle {
   Future<Uint8List?> readCharacteristic({
     required String serviceUuid,
     required String characteristicUuid,
-  }) =>
-      LayrzBlePlatform.instance.readCharacteristic(
-        serviceUuid: serviceUuid,
-        characteristicUuid: characteristicUuid,
-      );
+  }) => LayrzBlePlatform.instance.readCharacteristic(
+    serviceUuid: serviceUuid,
+    characteristicUuid: characteristicUuid,
+  );
 
   /// [startNotify] starts listening to notifications from a
   /// BLE characteristic. To stop listening, use [stopNotify] method and
@@ -118,19 +130,17 @@ class LayrzBle {
   Future<bool?> startNotify({
     required String serviceUuid,
     required String characteristicUuid,
-  }) =>
-      LayrzBlePlatform.instance.startNotify(
-        serviceUuid: serviceUuid,
-        characteristicUuid: characteristicUuid,
-      );
+  }) => LayrzBlePlatform.instance.startNotify(
+    serviceUuid: serviceUuid,
+    characteristicUuid: characteristicUuid,
+  );
 
   /// [stopNotify] stops listening to notifications from a BLE characteristic.
   Future<bool?> stopNotify({
     required String serviceUuid,
     required String characteristicUuid,
-  }) =>
-      LayrzBlePlatform.instance.stopNotify(
-        serviceUuid: serviceUuid,
-        characteristicUuid: characteristicUuid,
-      );
+  }) => LayrzBlePlatform.instance.stopNotify(
+    serviceUuid: serviceUuid,
+    characteristicUuid: characteristicUuid,
+  );
 }

@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:layrz_ble/src/ble.dart';
 import 'package:layrz_ble/src/types.dart';
-import 'package:layrz_models/layrz_models.dart';
 
 import 'platform_interface.dart';
 
@@ -23,10 +23,9 @@ class LayrzBleNative extends LayrzBlePlatform {
               args['serviceData'] = [];
             }
 
-            final serviceData =
-                args['serviceData'].map((e) {
-                  return Map<String, dynamic>.from(e);
-                }).toList();
+            final serviceData = args['serviceData'].map((e) {
+              return Map<String, dynamic>.from(e);
+            }).toList();
 
             args['serviceData'] = serviceData;
 
@@ -34,10 +33,9 @@ class LayrzBleNative extends LayrzBlePlatform {
               args['manufacturerData'] = [];
             }
 
-            final manufacturerData =
-                args['manufacturerData'].map((e) {
-                  return Map<String, dynamic>.from(e);
-                }).toList();
+            final manufacturerData = args['manufacturerData'].map((e) {
+              return Map<String, dynamic>.from(e);
+            }).toList();
 
             args['manufacturerData'] = manufacturerData;
 

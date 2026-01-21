@@ -133,6 +133,8 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                 txPower = null
             }
 
+            var isBonded = device.getBondState() == BluetoothDevice.BOND_BONDED
+
             channel.invokeMethod(
                 "onScan",
                 mapOf(
@@ -142,6 +144,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                     "manufacturerData" to manufacturerData,
                     "serviceData" to serviceData,
                     "txPower" to txPower,
+                    "isBonded" to isBonded
                 )
             )
 
@@ -513,48 +516,23 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             filteredMacAddress = filteredMacAddress!!.uppercase()
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val perm1 = ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-            val perm2 = ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.BLUETOOTH
-            ) == PackageManager.PERMISSION_GRANTED
-            val perm3 = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                ActivityCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.BLUETOOTH_CONNECT
-                ) == PackageManager.PERMISSION_GRANTED
+        val ok =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val scanOk = ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) ==
+                    PackageManager.PERMISSION_GRANTED
+                val connectOk = ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
+                    PackageManager.PERMISSION_GRANTED
+                scanOk && connectOk
             } else {
-                ActivityCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.BLUETOOTH_ADMIN
-                ) == PackageManager.PERMISSION_GRANTED
+                // Android 6–11: scanning requires location runtime permission
+                ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                    PackageManager.PERMISSION_GRANTED
             }
 
-            if (!perm2 ) {
-                Log.d(TAG, "No BLUETOOTH permission")
-                result.success(false)
-                return
-            }
-
-            if (!perm3 ) {
-
-                Log.d(TAG, "Build.VERSION.SDK_INT " + Build.VERSION.SDK_INT)
-                Log.d(TAG, "Build.VERSION_CODES.S " + Build.VERSION_CODES.S)
-
-                Log.d(TAG, "No BLUETOOTH_CONNECT permission")
-                result.success(false)
-                return
-            }
-
-           if (!perm1) {
-                Log.d(TAG, "No ACCESS_FINE_LOCATION permission")
-                result.success(false)
-                return
-            }
+        if (!ok) {
+            Log.d(TAG, "Missing required BLE permissions for this Android version")
+            result.success(false)
+            return
         }
 
         if (bluetooth == null) {
