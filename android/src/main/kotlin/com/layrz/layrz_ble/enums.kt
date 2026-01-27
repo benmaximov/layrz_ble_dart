@@ -7,4 +7,5 @@ enum class LastOperation {
     WRITE_CHARACTERISTIC,
     READ_CHARACTERISTIC,
     BONDING,
+    UNBONDING
 }

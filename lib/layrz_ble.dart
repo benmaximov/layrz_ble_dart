@@ -85,6 +85,10 @@ class LayrzBle {
   Future<bool?> pair({required String macAddress}) =>
       LayrzBlePlatform.instance.pair(macAddress: macAddress);
 
+  /// [connect] unpairs to a BLE device.
+  Future<bool?> unpair({required String macAddress}) =>
+      LayrzBlePlatform.instance.unpair(macAddress: macAddress);
+
   /// [connect] connects to a BLE device.
   Future<bool?> isBonded({required String macAddress}) =>
       LayrzBlePlatform.instance.isBonded(macAddress: macAddress);

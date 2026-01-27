@@ -88,13 +88,17 @@ namespace layrz_ble
       void handleScanResult(DeviceInformation device);
       void handleBleScanResult(BleScanResult& result);
 
-      //Pancho
       winrt::fire_and_forget connect(
         const flutter::MethodCall<flutter::EncodableValue> &method_call,
         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
       );
 
       winrt::fire_and_forget pair(
+        const flutter::MethodCall<flutter::EncodableValue> &method_call,
+        std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
+      );
+
+      winrt::fire_and_forget unpair(
         const flutter::MethodCall<flutter::EncodableValue> &method_call,
         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
       );

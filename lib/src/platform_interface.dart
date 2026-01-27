@@ -81,6 +81,11 @@ abstract class LayrzBlePlatform extends PlatformInterface {
     required String macAddress,
   }) => throw UnimplementedError('pair() has not been implemented.');
 
+  Future<bool?> unpair({
+    /// [macAddress] is the MAC address or UUID of the device to pair.
+    required String macAddress,
+  }) => throw UnimplementedError('pair() has not been implemented.');
+
   Future<bool?> isBonded({
     /// [macAddress] is the MAC address or UUID of the device to pair.
     required String macAddress,

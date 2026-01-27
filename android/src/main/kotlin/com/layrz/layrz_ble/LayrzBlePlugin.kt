@@ -402,7 +402,8 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     private val mBondStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
 
-            if (lastOperation != LastOperation.BONDING) return
+            if (lastOperation != LastOperation.BONDING
+                && lastOperation != LastOperation.UNBONDING) return
 
             val device = intent?.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
             val bondState = intent?.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.BOND_NONE)
@@ -412,15 +413,30 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             if (bondResult == null)
                 return
 
-            if (bondState == BluetoothDevice.BOND_BONDED)
+            if (lastOperation == LastOperation.BONDING)
             {
-                bondResult?.success(true)
-                bondResult = null
+                if (bondState == BluetoothDevice.BOND_BONDED)
+                {
+                    bondResult?.success(true)
+                    bondResult = null
+                }
+                else if (bondState != BluetoothDevice.BOND_BONDING)
+                {
+                    bondResult?.success(false)
+                    bondResult = null
+                }
             }
-            else if (bondState != BluetoothDevice.BOND_BONDING)
+            else 
             {
-                bondResult?.success(false)
-                bondResult = null
+                if (bondState == BluetoothDevice.BOND_NONE)
+                {
+                    bondResult?.success(true)
+                    bondResult = null
+                }
+                else {
+                    bondResult?.success(false)
+                    bondResult = null
+                }
             }
 
         }
@@ -445,6 +461,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             "connect" -> connect(call = call, result = result)
             "isBonded" -> isBonded(call = call, result = result)
             "pair" -> pair(call = call, result = result)
+            "unpair" -> unpair(call = call, result = result)
             "disconnect" -> disconnect(result = result)
             "discoverServices" -> discoverServices(result = result)
             "setMtu" -> setMtu(call = call, result = result)
@@ -719,6 +736,47 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             result.success(true)
         }
     }
+
+    @SuppressLint("MissingPermission")
+    private fun unpair(call: MethodCall, result: Result) {
+        searchingMacAddress = call.arguments as String?
+
+    if (searchingMacAddress == null) {
+        Log.d(TAG, "No macAddress provided")
+        result.success(false)
+        return
+    }
+
+    if (!devices.containsKey(searchingMacAddress!!)) {
+        Log.d(TAG, "Device not found")
+        result.success(false)
+        return
+    }
+
+    connectedDevice = devices[searchingMacAddress!!]!!
+    bondResult = result
+    lastOperation = LastOperation.UNBONDING
+
+    val bondState = connectedDevice!!.bondState
+    if (bondState == BluetoothDevice.BOND_BONDED) {
+        Log.d(TAG, "Initiating unbonding process")
+        try {
+            //removeBond is hidden method, so use getMethod
+            val method = connectedDevice!!::class.java.getMethod("removeBond")
+            method.invoke(connectedDevice)
+            //result.success(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Unbonding failed", e)
+            //bondResult = null
+            result.success(false)
+        }
+    } else {
+        Log.d(TAG, "Device not bonded")
+        //bondResult = null
+        result.success(true)
+    }
+}
+
 
     /* Discovers the services of a BLE device */
     @SuppressLint("MissingPermission")
@@ -1155,7 +1213,13 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                         gatt?.close()
                         bondResult?.success(false)
                         bondResult = null
-                    }
+                    }     
+                    LastOperation.UNBONDING -> {
+                        gatt?.disconnect()
+                        gatt?.close()
+                        bondResult?.success(false)
+                        bondResult = null
+                    }                  
                     LastOperation.SET_MTU -> {
                         setMtuResult?.success(null)
                         setMtuResult = null

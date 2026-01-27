@@ -99,9 +99,8 @@ abstract class BleCharacteristic with _$BleCharacteristic {
     required String uuid,
 
     /// [properties] is the list of properties of the BLE characteristic.
-    @JsonKey(unknownEnumValue: BleProperty.unknown)
-    @Default([])
-    List<BleProperty> properties,
+    //@JsonKey(unknownEnumValue: BleProperty.unknown)
+    @Default([]) List<BleProperty> properties,
   }) = _BleCharacteristic;
 
   factory BleCharacteristic.fromJson(Map<String, dynamic> json) =>

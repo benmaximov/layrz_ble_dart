@@ -56,6 +56,8 @@ namespace layrz_ble
       isBonded(method_call, std::move(result));
     else if (method.compare("pair") == 0)
       pair(method_call, std::move(result));
+    else if (method.compare("unpair") == 0)
+      unpair(method_call, std::move(result));
     else if (method.compare("disconnect") == 0)
       disconnect(method_call, std::move(result));
     else if (method.compare("discoverServices") == 0)
@@ -494,6 +496,16 @@ namespace layrz_ble
 
     co_return;
   }
+
+  winrt::fire_and_forget LayrzBlePlugin::unpair(
+      const flutter::MethodCall<flutter::EncodableValue> &method_call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)
+  {
+    //not implemented
+    result->Success(flutter::EncodableValue(false));
+    co_return;
+  }
+
   winrt::fire_and_forget LayrzBlePlugin::pair(
       const flutter::MethodCall<flutter::EncodableValue> &method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result)

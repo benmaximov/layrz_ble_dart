@@ -75,21 +75,6 @@ class LayrzBleNative extends LayrzBlePlatform {
 
   final channel = const MethodChannel('com.layrz.ble');
 
-  /*final checkCapabilitiesChannel = const MethodChannel('com.layrz.ble.checkCapabilities');
-  final startScanChannel = const MethodChannel('com.layrz.ble.startScan');
-  final stopScanChannel = const MethodChannel('com.layrz.ble.stopScan');
-  final connectChannel = const MethodChannel('com.layrz.ble.connect');
-  final isBondedChannel = const MethodChannel('com.layrz.ble.isBonded');
-  final pairChannel = const MethodChannel('com.layrz.ble.pair');
-  final disconnectChannel = const MethodChannel('com.layrz.ble.disconnect');
-  final discoverServicesChannel = const MethodChannel('com.layrz.ble.discoverServices');
-  final setMtuChannel = const MethodChannel('com.layrz.ble.setMtu');
-  final writeCharacteristicChannel = const MethodChannel('com.layrz.ble.writeCharacteristic');
-  final readCharacteristicChannel = const MethodChannel('com.layrz.ble.readCharacteristic');
-  final startNotifyChannel = const MethodChannel('com.layrz.ble.startNotify');
-  final stopNotifyChannel = const MethodChannel('com.layrz.ble.stopNotify');
-  final eventsChannel = const MethodChannel('com.layrz.ble.events');*/
-
   final StreamController<BleDevice> _scanController =
       StreamController<BleDevice>.broadcast();
   final StreamController<BleEvent> _eventController =
@@ -154,6 +139,10 @@ class LayrzBleNative extends LayrzBlePlatform {
   @override
   Future<bool?> pair({required String macAddress}) =>
       channel.invokeMethod<bool>('pair', macAddress);
+
+  @override
+  Future<bool?> unpair({required String macAddress}) =>
+      channel.invokeMethod<bool>('unpair', macAddress);
 
   @override
   Future<bool?> isBonded({required String macAddress}) =>
