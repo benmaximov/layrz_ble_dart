@@ -101,7 +101,7 @@ abstract class LayrzBlePlatform extends PlatformInterface {
   /// [writeCharacteristic] sends a payload to a BLE characteristic.
   ///
   /// The return value is `true` if the payload was sent successfully.
-  Future<bool> writeCharacteristic({
+  Future<int> writeCharacteristic({
     /// [serviceUuid] is the UUID of the service.
     required String serviceUuid,
 

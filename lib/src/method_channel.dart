@@ -193,7 +193,7 @@ class LayrzBleNative extends LayrzBlePlatform {
   }
 
   @override
-  Future<bool> writeCharacteristic({
+  Future<int> writeCharacteristic({
     required String serviceUuid,
     required String characteristicUuid,
     required Uint8List payload,
@@ -201,7 +201,7 @@ class LayrzBleNative extends LayrzBlePlatform {
     required bool withResponse,
   }) async {
     final result = await channel
-        .invokeMethod<bool>('writeCharacteristic', <String, dynamic>{
+        .invokeMethod<int>('writeCharacteristic', <String, dynamic>{
           'serviceUuid': serviceUuid,
           'characteristicUuid': characteristicUuid,
           'payload': payload,
@@ -211,7 +211,7 @@ class LayrzBleNative extends LayrzBlePlatform {
 
     if (result == null) {
       log('Error sending payload from native side');
-      return false;
+      return -1;
     }
 
     return result;

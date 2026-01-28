@@ -262,7 +262,7 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
   }
 
   @override
-  Future<bool> writeCharacteristic({
+  Future<int> writeCharacteristic({
     required String serviceUuid,
     required String characteristicUuid,
     required Uint8List payload,
@@ -271,7 +271,7 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
   }) async {
     if (_connectedDevice == null) {
       log("Not connected to any device");
-      return false;
+      return -1;
     }
 
     final service = _connectedDevice!.gattServices.firstWhereOrNull((element) {
@@ -279,7 +279,7 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     });
     if (service == null) {
       log("Service not found: $serviceUuid");
-      return false;
+      return -1;
     }
 
     final characteristic = service.characteristics.firstWhereOrNull((element) {
@@ -289,11 +289,11 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
 
     if (characteristic == null) {
       log("Characteristic not found: $characteristicUuid");
-      return false;
+      return -1;
     }
 
     await characteristic.writeValue(payload);
-    return true;
+    return 0;
   }
 
   @override

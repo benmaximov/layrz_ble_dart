@@ -20,6 +20,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.bluetooth.BluetoothStatusCodes
 
 import android.os.Build
 import android.os.Handler
@@ -65,6 +66,8 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     private var stopNotifyResult: Result? = null
 
     private var coroutine: Job? = null
+
+    private var writeTimeoutJob: Job? = null
 
     // Bluetooth device connection
     private var filteredMacAddress: String? = null
@@ -161,7 +164,6 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         ) {
             super.onConnectionStateChange(gatt, status, newState)
 
-
             if (connectedDevice == null) return
 
             Log.d(TAG, "lastOperation = ${lastOperation}")
@@ -177,10 +179,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                     connectedDevice = null
                     servicesAndCharacteristics.clear()
                     Handler(Looper.getMainLooper()).post {
-                        channel.invokeMethod(
-                            "onEvent",
-                            "DISCONNECTED"
-                        )
+                        channel.invokeMethod("onEvent", "DISCONNECTED")
                     }
                     return
                 }
@@ -298,18 +297,22 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         ) {
             super.onCharacteristicWrite(gatt, characteristic, status)
 
-            if (lastOperation != LastOperation.WRITE_CHARACTERISTIC) return
+            Handler(Looper.getMainLooper()).post {         
+                if (lastOperation != LastOperation.WRITE_CHARACTERISTIC) return@post
+                
+                writeTimeoutJob?.cancel()
+                writeTimeoutJob = null
 
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "Write successful")
-                writeCharacteristicResult?.success(true)
-            } else {
-                Log.d(TAG, "Characteristic write failed")
-                writeCharacteristicResult?.success(false)
-            }
-            writeCharacteristicResult = null
-            coroutine?.cancel()
-            coroutine = null
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    Log.d(TAG, "Write successful")
+                    writeCharacteristicResult?.success(0)
+                } else {
+                    Log.d(TAG, "Characteristic write failed ${status}")
+                    writeCharacteristicResult?.success(status)                
+                }
+
+                writeCharacteristicResult = null  
+            }          
         }
 
         @Deprecated("Deprecated in Java")
@@ -681,8 +684,6 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             bluetooth!!.adapter.bluetoothLeScanner.stopScan(scanCallback)
         }*/
 
-
-
         connectedDevice = devices[searchingMacAddress!!]!!
         Log.d(TAG, "connecting to $connectedDevice")
         connectResult = result
@@ -840,6 +841,15 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     /* Sends a payload to a BLE device */
     @SuppressLint("MissingPermission")
     private fun writeCharacteristic(call: MethodCall, result: Result) {
+
+        if (writeCharacteristicResult != null) {
+            Log.d(TAG, "Previous write is not complete")
+            result.success(null)
+            return
+        }
+        writeTimeoutJob?.cancel()
+        
+
         val serviceUuid = call.argument<String>("serviceUuid")
         if (serviceUuid == null) {
             Log.d(TAG, "No serviceUuid provided")
@@ -870,7 +880,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         }
 
         val writeType = call.argument<Boolean>("withResponse") ?: true
-
+        
         if (gatt == null) {
             Log.d(TAG, "No device connected")
             result.success(null)
@@ -878,7 +888,6 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             return
         }
 
-        Log.d(TAG, "Service: $serviceUuid")
         val service = servicesAndCharacteristics[serviceUuid]
         if (service == null) {
             Log.d(TAG, "Service not found")
@@ -893,7 +902,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             result.success(null)
             writeCharacteristicResult = null
             return
-        }
+        }        
 
         if (!characteristic.properties.contains("WRITE")) {
             Log.d(TAG, "Characteristic does not support write")
@@ -906,27 +915,38 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         lastOperation = LastOperation.WRITE_CHARACTERISTIC
 
         val type = if (writeType) {
-            BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+            BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT            
         } else {
             BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
         }
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU) {
-            gatt!!.writeCharacteristic(
-                characteristic.characteristic,
-                payload,
-                type,
-            )
+
+        val ok: Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            gatt!!.writeCharacteristic(characteristic.characteristic, payload, type) == BluetoothStatusCodes.SUCCESS
         } else {
             characteristic.characteristic.value = payload
             characteristic.characteristic.writeType = type
             gatt!!.writeCharacteristic(characteristic.characteristic)
         }
 
+        if (!ok) {
+            Log.d(TAG, "writeCharacteristic() returned false (GATT busy / queue full)")
+            writeCharacteristicResult?.success(-1)
+            writeCharacteristicResult = null
+            coroutine?.cancel()
+            coroutine = null
+            return
+        }
+        
         // Timeout
-        spawnTimeout(
-            operation = LastOperation.WRITE_CHARACTERISTIC,
-            timeoutSeconds = timeoutSeconds,
-        )
+        writeTimeoutJob = CoroutineScope(Dispatchers.Main).launch {
+            delay(timeoutSeconds * 1000L)                        
+            Log.d(TAG, "WRITE_CHARACTERISTIC timed out")
+            Handler(Looper.getMainLooper()).post {     
+                writeCharacteristicResult?.success(-2)
+                writeCharacteristicResult = null
+                channel.invokeMethod("onEvent", "TIMEOUT")        
+            }
+        }        
     }
 
     /* Reads a payload from a BLE device */
@@ -1188,8 +1208,12 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                 Log.d(TAG, "$operation timed out")
                 when (operation) {
                     LastOperation.WRITE_CHARACTERISTIC -> {
-                        writeCharacteristicResult?.success(false)
-                        writeCharacteristicResult = null
+                        
+                        Handler(Looper.getMainLooper()).post {
+                            writeCharacteristicResult?.success(-1)
+                            writeCharacteristicResult = null
+                            channel.invokeMethod("onEvent", "TIMEOUT")
+                        }
                     }
                     LastOperation.READ_CHARACTERISTIC -> {
                         readCharacteristicResult?.success(null)

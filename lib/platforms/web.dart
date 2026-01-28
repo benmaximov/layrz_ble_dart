@@ -158,7 +158,7 @@ class LayrzBlePluginWeb extends LayrzBlePlatform {
   }
 
   @override
-  Future<bool> writeCharacteristic({
+  Future<int> writeCharacteristic({
     required String serviceUuid,
     required String characteristicUuid,
     required Uint8List payload,
@@ -167,7 +167,7 @@ class LayrzBlePluginWeb extends LayrzBlePlatform {
   }) async {
     if (_currentConnected == null) {
       log("No device connected");
-      return false;
+      return -1;
     }
 
     await _currentConnected!.connect();
@@ -179,7 +179,7 @@ class LayrzBlePluginWeb extends LayrzBlePlatform {
       );
       if (service == null) {
         log("Service not found: $serviceUuid");
-        return false;
+        return -1;
       }
 
       try {
@@ -191,14 +191,14 @@ class LayrzBlePluginWeb extends LayrzBlePlatform {
         } else {
           await characteristic.writeValueWithoutResponse(payload);
         }
-        return true;
+        return 0;
       } catch (e) {
         log("Error getting characteristic: $e");
-        return false;
+        return -1;
       }
     } catch (e) {
       log("Error discovering services: $e");
-      return false;
+      return -1;
     }
   }
 

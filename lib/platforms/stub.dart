@@ -53,7 +53,7 @@ class LayrzBlePluginStub extends LayrzBlePlatform {
       throw UnimplementedError('discoverServices() has not been implemented.');
 
   @override
-  Future<bool> writeCharacteristic({
+  Future<int> writeCharacteristic({
     required String serviceUuid,
     required String characteristicUuid,
     required Uint8List payload,

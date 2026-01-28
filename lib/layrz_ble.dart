@@ -102,7 +102,7 @@ class LayrzBle {
   /// [writeCharacteristic] sends a payload to a BLE characteristic.
   ///
   /// The return value is `true` if the payload was sent successfully.
-  Future<bool> writeCharacteristic({
+  Future<int> writeCharacteristic({
     required String serviceUuid,
     required String characteristicUuid,
     required Uint8List payload,

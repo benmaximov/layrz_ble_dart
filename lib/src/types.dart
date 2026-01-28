@@ -65,7 +65,8 @@ class BleCapabilities {
     return BleCapabilities(
       locationPermission: map['locationPermission'] ?? false,
       bluetoothPermission: map['bluetoothPermission'] ?? false,
-      bluetoothAdminOrScanPermission: map['bluetoothAdminOrScanPermission'] ?? false,
+      bluetoothAdminOrScanPermission:
+          map['bluetoothAdminOrScanPermission'] ?? false,
       bluetoothConnectPermission: map['bluetoothConnectPermission'] ?? false,
     );
   }
@@ -97,7 +98,8 @@ enum BleEvent {
 
   /// [paired] is an event that is triggered when a BLE device is paired.
   paired,
-  ;
+
+  timeout;
 
   @override
   String toString() => toPlatform();
@@ -112,6 +114,8 @@ enum BleEvent {
         return 'DISCONNECTED';
       case BleEvent.scanStopped:
         return 'SCAN_STOPPED';
+      case BleEvent.timeout:
+        return 'TIMEOUT';
       default:
         return 'UNKNOWN';
     }
@@ -127,6 +131,8 @@ enum BleEvent {
         return BleEvent.disconnected;
       case 'SCAN_STOPPED':
         return BleEvent.scanStopped;
+      case 'TIMEOUT':
+        return BleEvent.timeout;
       default:
         return BleEvent.unknown;
     }
