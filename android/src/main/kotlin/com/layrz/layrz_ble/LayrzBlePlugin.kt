@@ -1,4 +1,4 @@
-@file:Suppress("DEPRECATION", "SpellCheckingInspection", "MissingPermission")
+ @file:Suppress("DEPRECATION", "SpellCheckingInspection", "MissingPermission")
 
 package com.layrz.layrz_ble
 
@@ -313,6 +313,27 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
 
                 writeCharacteristicResult = null  
             }          
+        }
+
+        // API 33+ callback — value is passed directly (preferred)
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray,
+            status: Int
+        ) {
+            if (lastOperation != LastOperation.READ_CHARACTERISTIC) return
+
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                readCharacteristicResult?.success(value)
+            } else {
+                Log.d(TAG, "Characteristic read failed (API33)")
+                readCharacteristicResult?.success(null)
+            }
+
+            readCharacteristicResult = null
+            coroutine?.cancel()
+            coroutine = null
         }
 
         @Deprecated("Deprecated in Java")
