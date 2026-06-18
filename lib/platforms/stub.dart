@@ -67,7 +67,7 @@ class LayrzBlePluginStub extends LayrzBlePlatform {
   Future<Uint8List?> readCharacteristic({
     required String serviceUuid,
     required String characteristicUuid,
-    Duration timeout = const Duration(seconds: 30),
+    Duration timeout = const Duration(seconds: 5),
   }) => throw UnimplementedError(
     'readCharacteristic() has not been implemented.',
   );

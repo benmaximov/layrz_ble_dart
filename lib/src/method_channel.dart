@@ -221,7 +221,7 @@ class LayrzBleNative extends LayrzBlePlatform {
   Future<Uint8List?> readCharacteristic({
     required String serviceUuid,
     required String characteristicUuid,
-    Duration timeout = const Duration(seconds: 30),
+    Duration timeout = const Duration(seconds: 5),
   }) async {
     final result = await channel
         .invokeMethod<Uint8List?>('readCharacteristic', <String, dynamic>{

@@ -132,7 +132,7 @@ abstract class LayrzBlePlatform extends PlatformInterface {
     required String characteristicUuid,
 
     /// [timeout] is the duration to wait for the characteristic to be read.
-    Duration timeout = const Duration(seconds: 30),
+    Duration timeout = const Duration(seconds: 5),
   }) => throw UnimplementedError(
     'readCharacteristic() has not been implemented.',
   );
