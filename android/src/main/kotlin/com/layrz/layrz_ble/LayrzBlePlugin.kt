@@ -168,41 +168,79 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         ) {
             super.onConnectionStateChange(gatt, status, newState)
 
-            if (connectedDevice == null) return
+            Log.d(TAG, "onConnectionStateChange: status=$status newState=$newState lastOp=$lastOperation cbGatt=${gatt.hashCode()} curGatt=${this@LayrzBlePlugin.gatt.hashCode()} dev=${connectedDevice?.address} connectPending=${connectResult != null}")
 
-            Log.d(TAG, "lastOperation = ${lastOperation}")
-            Log.d(TAG, "status = ${status}")
-            Log.d(TAG, "newState = ${newState}")
+            if (connectedDevice == null) {
+                Log.d(TAG, "onConnectionStateChange: ignored (no connectedDevice)")
+                return
+            }
+            if (gatt == null) return
 
-
-            if (lastOperation != LastOperation.CONNECT) {
-                if (newState == BluetoothGatt.STATE_DISCONNECTED) {
-                    Log.d(TAG, "Disconnected")
-                    gattQueue.clear()
-                    gattCompletion = null
-                    gatt?.disconnect()
-                    gatt?.close()
-                    connectedDevice = null
-                    servicesAndCharacteristics.clear()
-                    Handler(Looper.getMainLooper()).post {
-                        channel.invokeMethod("onEvent", "DISCONNECTED")
-                    }
-                    return
-                }
+            // Ignore callbacks from a previous, stale BluetoothGatt instance.
+            // connect() creates a NEW BluetoothGatt each attempt; late callbacks
+            // from the old one must not tear down or fail the current session.
+            if (gatt !== this@LayrzBlePlugin.gatt) {
+                Log.d(TAG, "onConnectionStateChange: STALE gatt callback ignored (cb=${gatt.hashCode()} current=${this@LayrzBlePlugin.gatt.hashCode()})")
+                try { gatt.close() } catch (e: Exception) { Log.d(TAG, "stale gatt close error: ${e.message}") }
+                return
             }
 
-
-
-            if (newState == android.bluetooth.BluetoothProfile.STATE_CONNECTED) {
-                connectedDevice = gatt!!.device
-                servicesAndCharacteristics.clear()
-                Log.d(TAG, "Connected to ${connectedDevice!!.address}, discovering services")
-                gatt.discoverServices()
-            } else {
-                Log.d(TAG, "Connection failed")
-                gatt?.close()
-                connectResult?.success(false)
-                connectResult = null
+            when (newState) {
+                android.bluetooth.BluetoothProfile.STATE_CONNECTED -> {
+                    connectedDevice = gatt.device
+                    servicesAndCharacteristics.clear()
+                    Log.d(TAG, "Connected to ${connectedDevice!!.address}, discovering services")
+                    val discoverStarted = gatt.discoverServices()
+                    Log.d(TAG, "discoverServices() returned $discoverStarted")
+                }
+                android.bluetooth.BluetoothProfile.STATE_CONNECTING -> {
+                    // Transient state during connection establishment — no action.
+                    Log.d(TAG, "onConnectionStateChange: CONNECTING (transient)")
+                }
+                else -> {
+                    // STATE_DISCONNECTED / STATE_DISCONNECTING / connect failure.
+                    // ALWAYS tear down and notify Dart — regardless of
+                    // lastOperation. Previously a disconnect arriving while
+                    // lastOperation == CONNECT (right after connect, before the
+                    // first read) was silently swallowed: no cleanup, no event,
+                    // and every subsequent read ran against a dead gatt.
+                    val connectPending = connectResult != null
+                    Log.d(TAG, "GATT link down: newState=$newState status=$status connectPending=$connectPending — full teardown")
+                    gattQueue.clear()
+                    gattCompletion = null
+                    currentNotifications.clear()
+                    servicesAndCharacteristics.clear()
+                    try { gatt.disconnect() } catch (_: Exception) {}
+                    try { gatt.close() } catch (_: Exception) {}
+                    this@LayrzBlePlugin.gatt = null
+                    connectedDevice = null
+                    writeTimeoutJob?.cancel()
+                    writeTimeoutJob = null
+                    Handler(Looper.getMainLooper()).post {
+                        if (connectPending) {
+                            connectResult?.success(false)
+                            connectResult = null
+                        }
+                        // Fail any in-flight GATT operation results so pending
+                        // Dart futures complete immediately instead of hanging
+                        // until their timeout.
+                        if (readCharacteristicResult != null) {
+                            Log.d(TAG, "GATT link down: failing pending read")
+                            readCharacteristicResult?.success(null)
+                            readCharacteristicResult = null
+                        }
+                        if (writeCharacteristicResult != null) {
+                            Log.d(TAG, "GATT link down: failing pending write")
+                            writeCharacteristicResult?.success(-1)
+                            writeCharacteristicResult = null
+                        }
+                        if (setMtuResult != null) {
+                            setMtuResult?.success(null)
+                            setMtuResult = null
+                        }
+                        channel.invokeMethod("onEvent", "DISCONNECTED")
+                    }
+                }
             }
 
             coroutine?.cancel()
@@ -211,9 +249,20 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
 
         override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
             super.onServicesDiscovered(gatt, status)
-            if (connectedDevice == null) return
-            if (lastOperation != LastOperation.CONNECT) return
+            Log.d(TAG, "onServicesDiscovered: status=$status lastOp=$lastOperation cbGatt=${gatt.hashCode()} curGatt=${this@LayrzBlePlugin.gatt.hashCode()} connectPending=${connectResult != null}")
+            if (connectedDevice == null) {
+                Log.d(TAG, "onServicesDiscovered: ignored (no connectedDevice)")
+                return
+            }
             if (gatt == null) return
+            if (gatt !== this@LayrzBlePlugin.gatt) {
+                Log.d(TAG, "onServicesDiscovered: STALE gatt callback ignored")
+                return
+            }
+            if (lastOperation != LastOperation.CONNECT) {
+                Log.d(TAG, "onServicesDiscovered: ignored (lastOp=$lastOperation)")
+                return
+            }
 
             if (status == BluetoothGatt.GATT_SUCCESS) {
 
@@ -284,6 +333,10 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             super.onMtuChanged(gatt, mtu, status)
 
             Handler(Looper.getMainLooper()).post {
+                if (gatt !== this@LayrzBlePlugin.gatt) {
+                    Log.d(TAG, "onMtuChanged: STALE gatt callback ignored")
+                    return@post
+                }
                 if (lastOperation != LastOperation.SET_MTU) return@post
 
                 if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -307,7 +360,11 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         ) {
             super.onCharacteristicWrite(gatt, characteristic, status)
 
-            Handler(Looper.getMainLooper()).post {         
+            Handler(Looper.getMainLooper()).post {
+                if (gatt !== this@LayrzBlePlugin.gatt) {
+                    Log.d(TAG, "onCharacteristicWrite: STALE gatt callback ignored")
+                    return@post
+                }
                 if (lastOperation != LastOperation.WRITE_CHARACTERISTIC) return@post
                 
                 writeTimeoutJob?.cancel()
@@ -334,6 +391,10 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         ) {
             super.onDescriptorWrite(gatt, descriptor, status)
             Handler(Looper.getMainLooper()).post {
+                if (gatt !== this@LayrzBlePlugin.gatt) {
+                    Log.d(TAG, "onDescriptorWrite: STALE gatt callback ignored")
+                    return@post
+                }
                 Log.d(TAG, "onDescriptorWrite: descriptor=${descriptor.uuid} char=${descriptor.characteristic.uuid} status=$status")
                 // Signal the queue that the descriptor write (from startNotify) is done
                 gattCompletion?.done()
@@ -350,6 +411,11 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         ) {
             Handler(Looper.getMainLooper()).post {
                 Log.d(TAG, "onCharacteristicRead(API33): uuid=${characteristic.uuid} status=$status lastOp=$lastOperation")
+
+                if (gatt !== this@LayrzBlePlugin.gatt) {
+                    Log.d(TAG, "onCharacteristicRead(API33): STALE gatt callback ignored")
+                    return@post
+                }
 
                 if (lastOperation != LastOperation.READ_CHARACTERISTIC) {
                     Log.d(TAG, "onCharacteristicRead(API33): IGNORED - lastOperation is $lastOperation")
@@ -387,6 +453,11 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
 
             Handler(Looper.getMainLooper()).post {
                 Log.d(TAG, "onCharacteristicRead(legacy): uuid=${characteristic.uuid} status=$status lastOp=$lastOperation")
+
+                if (gatt !== this@LayrzBlePlugin.gatt) {
+                    Log.d(TAG, "onCharacteristicRead(legacy): STALE gatt callback ignored")
+                    return@post
+                }
 
                 if (lastOperation != LastOperation.READ_CHARACTERISTIC) {
                     Log.d(TAG, "onCharacteristicRead(legacy): IGNORED - lastOperation is $lastOperation")
@@ -427,6 +498,10 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             )
 
             Handler(Looper.getMainLooper()).post {
+                if (gatt !== this@LayrzBlePlugin.gatt) {
+                    Log.d(TAG, "onCharacteristicChanged: STALE gatt callback ignored")
+                    return@post
+                }
                 channel.invokeMethod(
                     "onNotify",
                     mapOf(
@@ -763,24 +838,26 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         }*/
 
         connectedDevice = devices[searchingMacAddress!!]!!
-        Log.d(TAG, "connecting to $connectedDevice")
+        Log.d(TAG, "connect: connecting to $searchingMacAddress (isScanning=$isScanning)")
         connectResult = result
         lastOperation = LastOperation.CONNECT
         gatt = connectedDevice!!.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
-        //gatt!!.connect()
+        Log.d(TAG, "connect: created gatt=${gatt.hashCode()} transport=LE autoConnect=false")
     }
 
     /* Disconnects from a BLE device */
     @SuppressLint("MissingPermission")
     private fun disconnect(result: Result) {
         if (gatt == null) {
-            Log.d(TAG, "No device connected")
+            Log.d(TAG, "disconnect: no device connected (gatt is null)")
             result.success(false)
             return
         }
 
+        Log.d(TAG, "disconnect: tearing down gatt=${gatt.hashCode()}")
         gattQueue.clear()
         gattCompletion = null
+        currentNotifications.clear()
         gatt!!.disconnect()
         gatt!!.close()
         result.success(true)
@@ -1038,7 +1115,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             return
         }
 
-        Log.d(TAG, "readCharacteristic: serviceUuid=$serviceUuid characteristicUuid=$characteristicUuid")
+        Log.d(TAG, "readCharacteristic: serviceUuid=$serviceUuid characteristicUuid=$characteristicUuid gatt=${gatt.hashCode()} dev=${connectedDevice?.address}")
 
         var timeoutSeconds: Int = call.argument<Int>("timeout") ?: 30
         if (timeoutSeconds < 1) {
