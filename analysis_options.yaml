@@ -2,3 +2,7 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   errors:
     unreachable_switch_default: ignore
+  exclude:
+    - build/**
+    - android/**
+    - windows/**
