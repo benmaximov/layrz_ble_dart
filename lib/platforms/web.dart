@@ -51,6 +51,7 @@ class LayrzBlePluginWeb extends LayrzBlePlatform {
   Future<bool?> startScan({
     String? macAddress,
     List<String>? servicesUuids,
+    int? scanMode, // Android only
   }) async {
     _devices.clear();
     final requestOptions = RequestOptionsBuilder.acceptAllDevices(

@@ -81,11 +81,79 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     private var connectedDevice: android.bluetooth.BluetoothDevice? = null
 
     private var isScanning = false
+
+    /** ScanSettings scan mode requested by the app (default BALANCED). */
+    private var scanMode = ScanSettings.SCAN_MODE_BALANCED
+
+    // Android (7+) demotes scans running > 30 min to opportunistic (no
+    // results); restart well before that.
+    private val scanRestartMs = 25L * 60 * 1000
+    private val scanHandler = Handler(Looper.getMainLooper())
+    private val scanRestart: Runnable = object : Runnable {
+        override fun run() {
+            if (!isScanning) return
+            Log.d(TAG, "Restarting scan (30 min limit)")
+            try {
+                bluetooth?.adapter?.bluetoothLeScanner?.stopScan(scanCallback)
+            } catch (e: Exception) {
+                Log.d(TAG, "stopScan before restart failed: $e")
+            }
+            startLeScan()
+        }
+    }
+
+    /**
+     * Starts the scan with [scanMode] (BALANCED by default; LOW_LATENCY =
+     * continuous listening), every advertisement reported immediately (ALL_MATCHES, no
+     * batching, aggressive matching) and, on Android 8+, extended
+     * advertisements on all supported PHYs (incl. Coded PHY / long range).
+     */
+    @SuppressLint("MissingPermission")
+    private fun startLeScan() {
+        val adapter = bluetooth!!.adapter
+        val builder = ScanSettings.Builder()
+            .setScanMode(scanMode)
+            .setReportDelay(0)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            builder.setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                .setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
+                .setNumOfMatches(ScanSettings.MATCH_NUM_MAX_ADVERTISEMENT)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            adapter.isLeExtendedAdvertisingSupported
+        ) {
+            builder.setLegacy(false)
+                .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
+        }
+        Log.d(
+            TAG,
+            "startLeScan: mode=$scanMode" +
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                    ", extAdv=${adapter.isLeExtendedAdvertisingSupported}" +
+                        ", codedPhy=${adapter.isLeCodedPhySupported}"
+                else ""
+        )
+        adapter.bluetoothLeScanner.startScan(null, builder.build(), scanCallback)
+        isScanning = true
+        lastOperation = LastOperation.SCAN
+        scanHandler.removeCallbacks(scanRestart)
+        scanHandler.postDelayed(scanRestart, scanRestartMs)
+    }
+
+    private fun stopLeScan() {
+        scanHandler.removeCallbacks(scanRestart)
+        isScanning = false
+        try {
+            bluetooth?.adapter?.bluetoothLeScanner?.stopScan(scanCallback)
+        } catch (e: Exception) {
+            Log.d(TAG, "stopScan failed: $e")
+        }
+    }
     private var lastOperation: LastOperation? = null
     private var currentNotifications: MutableList<String> = mutableListOf()
     private var servicesAndCharacteristics: MutableMap<String, BleService> = mutableMapOf()
 
-    private val scanCallback = object : ScanCallback() {
+    private val scanCallback: ScanCallback = object : ScanCallback() {
         @SuppressLint("MissingPermission")
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
             super.onScanResult(callbackType, result)
@@ -156,6 +224,17 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             )
 
             devices[macAddress] = device
+        }
+
+        override fun onScanFailed(errorCode: Int) {
+            super.onScanFailed(errorCode)
+            // e.g. 2 = registration failed (too many starts in 30 s)
+            Log.e(TAG, "onScanFailed: $errorCode")
+            isScanning = false
+            scanHandler.removeCallbacks(scanRestart)
+            Handler(Looper.getMainLooper()).post {
+                channel.invokeMethod("onEvent", "SCAN_STOPPED")
+            }
         }
     }
 
@@ -679,8 +758,12 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     /* Starts the scanning */
     private fun startScan(call: MethodCall, result: Result) {
         @SuppressLint("MissingPermission")
-        if (isScanning) {
-            bluetooth!!.adapter.bluetoothLeScanner.stopScan(scanCallback)
+        if (isScanning) stopLeScan()
+
+        scanMode = when (call.argument<Int>("scanMode")) {
+            0 -> ScanSettings.SCAN_MODE_LOW_POWER
+            2 -> ScanSettings.SCAN_MODE_LOW_LATENCY
+            else -> ScanSettings.SCAN_MODE_BALANCED
         }
 
         filteredMacAddress = call.argument<String>("macAddress")
@@ -726,9 +809,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             startScanResult = result
         } else {
             Log.d(TAG, "Bluetooth is enabled, starting scan")
-            isScanning = true
-            lastOperation = LastOperation.SCAN
-            bluetooth!!.adapter.bluetoothLeScanner.startScan(scanCallback)
+            startLeScan()
             result.success(true)
             startScanResult = null
         }
@@ -743,34 +824,9 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             return
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val perm1 = ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-            val perm2 = ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.BLUETOOTH
-            ) == PackageManager.PERMISSION_GRANTED
-            val perm3 = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                ActivityCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.BLUETOOTH_CONNECT
-                ) == PackageManager.PERMISSION_GRANTED
-            } else {
-                ActivityCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.BLUETOOTH_ADMIN
-                ) == PackageManager.PERMISSION_GRANTED
-            }
-
-            if (!(perm1 && perm2 && perm3)) {
-                Log.d(TAG, "No permissions")
-                result.success(false)
-                stopScanResult = null
-                return
-            }
-        }
+        // Stopping needs no extra permission check: we only get here after a
+        // successful start (the old check used permissions that are
+        // maxSdkVersion 30 and so always failed on Android 12+).
 
         if (bluetooth == null) {
             Log.d(TAG, "Bluetooth is null, initializing")
@@ -778,10 +834,8 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                 context.getSystemService(android.content.Context.BLUETOOTH_SERVICE) as BluetoothManager
         }
 
-        val adapter = bluetooth!!.adapter
-
         Log.d(TAG, "Stopping scan")
-        adapter!!.bluetoothLeScanner.stopScan(scanCallback)
+        stopLeScan()
         result.success(true)
         stopScanResult = null
         filteredMacAddress = null
@@ -1375,8 +1429,7 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                         gattCompletion = null
                     }
                     LastOperation.SCAN -> {
-                        bluetooth!!.adapter.bluetoothLeScanner.stopScan(scanCallback)
-                        isScanning = false
+                        stopLeScan()
                         channel.invokeMethod("onEvent", "SCAN_STOPPED")
                         startScanResult?.success(false)
                         startScanResult = null
@@ -1419,17 +1472,14 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         if (requestCode == REQUEST_ENABLE_BT) {
             if (resultCode == Activity.RESULT_OK) {
                 Log.d(TAG, "Bluetooth enabled, starting scan")
-                if (ActivityCompat.checkSelfPermission(
+                // BLUETOOTH_SCAN only exists (as runtime permission) on 12+.
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+                    ActivityCompat.checkSelfPermission(
                         context,
                         Manifest.permission.BLUETOOTH_SCAN
-                    ) != PackageManager.PERMISSION_GRANTED
+                    ) == PackageManager.PERMISSION_GRANTED
                 ) {
-                    val settings = ScanSettings.Builder()
-                        .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-                        .build()
-                    bluetooth!!.adapter.bluetoothLeScanner.startScan(null, settings, scanCallback)
-                    isScanning = true
-                    lastOperation = LastOperation.SCAN
+                    startLeScan()
                     startScanResult?.success(true)
                     startScanResult = null
                 } else {

@@ -69,6 +69,7 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
   Future<bool?> startScan({
     String? macAddress,
     List<String>? servicesUuids,
+    int? scanMode, // Android only
   }) async {
     if (_client == null) {
       log("Error initializing BlueZClient");

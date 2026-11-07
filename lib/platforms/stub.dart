@@ -23,8 +23,11 @@ class LayrzBlePluginStub extends LayrzBlePlatform {
       throw UnimplementedError('_notifySubscription has not been implemented.');
 
   @override
-  Future<bool?> startScan({String? macAddress, List<String>? servicesUuids}) =>
-      throw UnimplementedError('startScan() has not been implemented.');
+  Future<bool?> startScan({
+    String? macAddress,
+    List<String>? servicesUuids,
+    int? scanMode,
+  }) => throw UnimplementedError('startScan() has not been implemented.');
 
   @override
   Future<bool?> stopScan() =>

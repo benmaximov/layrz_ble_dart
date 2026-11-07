@@ -46,6 +46,10 @@ abstract class LayrzBlePlatform extends PlatformInterface {
     /// [servicesUuids] is a list of service UUIDs to filter the services to be discovered.
     /// This property is only working on Web, other platforms will be ignored.
     List<String>? servicesUuids,
+
+    /// [scanMode] is the Android scan mode: 0 = low power, 1 = balanced,
+    /// 2 = low latency; default balanced. Ignored on other platforms.
+    int? scanMode,
   }) => throw UnimplementedError('startScan() has not been implemented.');
 
   /// [stopScan] stops scanning for BLE devices.

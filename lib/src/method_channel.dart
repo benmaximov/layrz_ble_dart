@@ -93,10 +93,14 @@ class LayrzBleNative extends LayrzBlePlatform {
       _notifyController.stream;
 
   @override
-  Future<bool?> startScan({String? macAddress, List<String>? servicesUuids}) =>
-      channel.invokeMethod<bool>('startScan', {
-        if (macAddress != null) 'macAddress': macAddress,
-      });
+  Future<bool?> startScan({
+    String? macAddress,
+    List<String>? servicesUuids,
+    int? scanMode,
+  }) => channel.invokeMethod<bool>('startScan', {
+    if (macAddress != null) 'macAddress': macAddress,
+    if (scanMode != null) 'scanMode': scanMode,
+  });
 
   @override
   Future<bool?> stopScan() => channel.invokeMethod<bool>('stopScan');
