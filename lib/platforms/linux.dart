@@ -11,6 +11,7 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
       _client = BlueZClient();
       _client!.connect().then((_) {
         _client!.deviceAdded.listen(_onScanAdded);
+        _client!.deviceRemoved.listen(_onDeviceRemoved);
       });
     } catch (e) {
       log("Error initializing BlueZClient: $e");
@@ -70,6 +71,8 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     String? macAddress,
     List<String>? servicesUuids,
     int? scanMode, // Android only
+    List<int>? serviceDataUuids, // Android only
+    List<int>? manufacturerIds, // Android only
   }) async {
     if (_client == null) {
       log("Error initializing BlueZClient");
@@ -246,7 +249,13 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     final device = _devices[macAddress.toLowerCase()]!;
     try {
       await _ensureAgent();
-      await device.pair();
+      if (!device.paired) {
+        try {
+          await device.pair();
+        } on BlueZAlreadyExistsException {
+          // Already paired (e.g. by another app): not an error.
+        }
+      }
       await device.setTrusted(true);
     } catch (e) {
       log("Error pairing $macAddress: $e");
@@ -326,8 +335,10 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
 
   StreamSubscription<List<String>>? _linkSub;
 
-  /// Clears per-connection state and notifies listeners exactly once.
+  /// Clears per-connection state and notifies listeners exactly once (only
+  /// if a device was connected).
   void _onDisconnected() {
+    final wasConnected = _connectedDevice != null;
     _linkSub?.cancel();
     _linkSub = null;
     for (final sub in _notifications.values) {
@@ -336,7 +347,7 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     _notifications.clear();
     _connectedDevice = null;
     _services.clear();
-    _eventController.add(BleEvent.disconnected);
+    if (wasConnected) _eventController.add(BleEvent.disconnected);
   }
 
   @override
@@ -552,6 +563,15 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     }
   }
 
+  /// BlueZ dropped [device] (unpair, or it timed out of the cache). Cancel
+  /// its property listener: when it is seen again BlueZ creates a new
+  /// object, which [_onScanAdded] must subscribe to.
+  void _onDeviceRemoved(BlueZDevice device) {
+    final mac = device.address.toLowerCase();
+    _subscriptions.remove(mac)?.cancel();
+    _devices.remove(mac);
+  }
+
   BleDevice _compose(BlueZDevice device) {
     List<BleManufacturerData> manufacturerData = [];
     for (final entry in device.manufacturerData.entries) {
@@ -584,7 +604,7 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     _devices[device.address.toLowerCase()] = device;
 
     return BleDevice(
-      macAddress: device.address.toLowerCase(),
+      macAddress: device.address.toUpperCase(),
       name: device.name.isEmpty ? 'Unknown' : device.name,
       rssi: device.rssi,
       txPower: device.txPower,
@@ -607,7 +627,7 @@ class _PairingAgent extends BlueZAgent {
   Future<String?> _ask(BlueZDevice device) async {
     final cb = _plugin.passkeyRequest;
     if (cb == null) return null;
-    return cb(device.address.toLowerCase());
+    return cb(device.address.toUpperCase());
   }
 
   @override
@@ -633,8 +653,10 @@ class _PairingAgent extends BlueZAgent {
     BlueZDevice device,
     int passkey,
   ) async {
-    _plugin.log("Pairing ${device.address}: confirming passkey "
-        "${passkey.toString().padLeft(6, '0')}");
+    _plugin.log(
+      "Pairing ${device.address}: confirming passkey "
+      "${passkey.toString().padLeft(6, '0')}",
+    );
     return BlueZAgentResponse.success();
   }
 
@@ -646,8 +668,7 @@ class _PairingAgent extends BlueZAgent {
   Future<BlueZAgentResponse> authorizeService(
     BlueZDevice device,
     BlueZUUID uuid,
-  ) async =>
-      BlueZAgentResponse.success();
+  ) async => BlueZAgentResponse.success();
 
   @override
   Future<void> displayPasskey(
@@ -655,7 +676,9 @@ class _PairingAgent extends BlueZAgent {
     int passkey,
     int entered,
   ) async {
-    _plugin.log("Pairing ${device.address}: enter passkey "
-        "${passkey.toString().padLeft(6, '0')} on the device");
+    _plugin.log(
+      "Pairing ${device.address}: enter passkey "
+      "${passkey.toString().padLeft(6, '0')} on the device",
+    );
   }
 }
