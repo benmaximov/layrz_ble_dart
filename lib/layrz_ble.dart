@@ -86,6 +86,12 @@ class LayrzBle {
   /// [disconnect] disconnects from any connected BLE device.
   Future<bool?> disconnect() => LayrzBlePlatform.instance.disconnect();
 
+  /// [passkeyRequest] is called when pairing needs a passkey/PIN entered on
+  /// this side (Linux only; Android/iOS show a system dialog).
+  /// Return the code, or null to cancel.
+  set passkeyRequest(Future<String?> Function(String macAddress)? cb) =>
+      LayrzBlePlatform.instance.passkeyRequest = cb;
+
   /// [connect] pairs to a BLE device.
   Future<bool?> pair({required String macAddress}) =>
       LayrzBlePlatform.instance.pair(macAddress: macAddress);

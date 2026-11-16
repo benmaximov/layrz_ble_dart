@@ -80,6 +80,11 @@ abstract class LayrzBlePlatform extends PlatformInterface {
   Future<bool?> disconnect() =>
       throw UnimplementedError('disconnect() has not been implemented.');
 
+  /// [passkeyRequest] is called when pairing needs a passkey/PIN typed in
+  /// on this side. Return the code, or null to cancel. Only used on
+  /// platforms without a system pairing dialog (Linux).
+  Future<String?> Function(String macAddress)? passkeyRequest;
+
   Future<bool?> pair({
     /// [macAddress] is the MAC address or UUID of the device to pair.
     required String macAddress,

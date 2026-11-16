@@ -164,6 +164,18 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     _connectedDevice = device;
     _services.clear();
 
+    // Watch for the link dropping on the remote side (out of range, device
+    // reboot, ...). BlueZ reports it as the Connected property going false.
+    await _linkSub?.cancel();
+    _linkSub = device.propertiesChanged.listen((props) {
+      if (props.contains('Connected') &&
+          !device.connected &&
+          identical(_connectedDevice, device)) {
+        log("Link lost: ${device.address}");
+        _onDisconnected();
+      }
+    });
+
     _eventController.add(BleEvent.connected);
 
     for (final service in _connectedDevice!.gattServices) {
@@ -232,21 +244,99 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     }
 
     final device = _devices[macAddress.toLowerCase()]!;
-    await device.pair();
-    await device.setTrusted(true);
+    try {
+      await _ensureAgent();
+      await device.pair();
+      await device.setTrusted(true);
+    } catch (e) {
+      log("Error pairing $macAddress: $e");
+      return false;
+    }
 
     _eventController.add(BleEvent.paired);
 
     return true;
   }
 
+  bool _agentRegistered = false;
+
+  /// Registers a BlueZ pairing agent so passkey/PIN requests are routed to
+  /// [passkeyRequest]. Without an agent BlueZ fails with AuthenticationFailed.
+  Future<void> _ensureAgent() async {
+    if (_agentRegistered) return;
+    await _client!.registerAgent(
+      _PairingAgent(this),
+      capability: BlueZAgentCapability.keyboardDisplay,
+    );
+    _agentRegistered = true;
+  }
+
+  BlueZDevice? _findDevice(String macAddress) {
+    final mac = macAddress.toLowerCase();
+    return _devices[mac] ??
+        _client?.devices.firstWhereOrNull(
+          (d) => d.address.toLowerCase() == mac,
+        );
+  }
+
+  @override
+  Future<bool?> unpair({required String macAddress}) async {
+    if (_client == null) {
+      log("Error initializing BlueZClient");
+      return false;
+    }
+
+    final device = _findDevice(macAddress);
+    if (device == null) {
+      log("Device not found: $macAddress");
+      return false;
+    }
+
+    final adapter = _client!.adapters.firstOrNull;
+    if (adapter == null) return false;
+
+    try {
+      // Removing the device from BlueZ deletes its bonding keys.
+      await adapter.removeDevice(device);
+      _devices.remove(macAddress.toLowerCase());
+      return true;
+    } catch (e) {
+      log("Error unpairing $macAddress: $e");
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> isBonded({required String macAddress}) async {
+    if (_client == null) return false;
+    return _findDevice(macAddress)?.paired ?? false;
+  }
+
   @override
   Future<bool> disconnect() async {
-    _connectedDevice?.disconnect();
+    final device = _connectedDevice;
+    _onDisconnected();
+    try {
+      await device?.disconnect();
+    } catch (e) {
+      log("Error disconnecting: $e");
+    }
+    return true;
+  }
+
+  StreamSubscription<List<String>>? _linkSub;
+
+  /// Clears per-connection state and notifies listeners exactly once.
+  void _onDisconnected() {
+    _linkSub?.cancel();
+    _linkSub = null;
+    for (final sub in _notifications.values) {
+      sub.cancel();
+    }
+    _notifications.clear();
     _connectedDevice = null;
     _services.clear();
     _eventController.add(BleEvent.disconnected);
-    return true;
   }
 
   @override
@@ -498,6 +588,7 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
       name: device.name.isEmpty ? 'Unknown' : device.name,
       rssi: device.rssi,
       txPower: device.txPower,
+      isBonded: device.paired,
       manufacturerData: manufacturerData,
       serviceData: serviceData,
     );
@@ -505,5 +596,66 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
 
   int _standarizeServiceUuid(List<int> bytes) {
     return (bytes[0] << 8) | bytes[1];
+  }
+}
+
+class _PairingAgent extends BlueZAgent {
+  _PairingAgent(this._plugin);
+
+  final LayrzBlePluginLinux _plugin;
+
+  Future<String?> _ask(BlueZDevice device) async {
+    final cb = _plugin.passkeyRequest;
+    if (cb == null) return null;
+    return cb(device.address.toLowerCase());
+  }
+
+  @override
+  Future<BlueZAgentPasskeyResponse> requestPasskey(BlueZDevice device) async {
+    final code = int.tryParse((await _ask(device))?.trim() ?? '');
+    if (code == null || code < 0 || code > 999999) {
+      return BlueZAgentPasskeyResponse.canceled();
+    }
+    return BlueZAgentPasskeyResponse.success(code);
+  }
+
+  @override
+  Future<BlueZAgentPinCodeResponse> requestPinCode(BlueZDevice device) async {
+    final pin = (await _ask(device))?.trim();
+    if (pin == null || pin.isEmpty) return BlueZAgentPinCodeResponse.canceled();
+    return BlueZAgentPinCodeResponse.success(pin);
+  }
+
+  // Pairing is always initiated by the user from the app, so accept
+  // "just works" / numeric-comparison confirmations.
+  @override
+  Future<BlueZAgentResponse> requestConfirmation(
+    BlueZDevice device,
+    int passkey,
+  ) async {
+    _plugin.log("Pairing ${device.address}: confirming passkey "
+        "${passkey.toString().padLeft(6, '0')}");
+    return BlueZAgentResponse.success();
+  }
+
+  @override
+  Future<BlueZAgentResponse> requestAuthorization(BlueZDevice device) async =>
+      BlueZAgentResponse.success();
+
+  @override
+  Future<BlueZAgentResponse> authorizeService(
+    BlueZDevice device,
+    BlueZUUID uuid,
+  ) async =>
+      BlueZAgentResponse.success();
+
+  @override
+  Future<void> displayPasskey(
+    BlueZDevice device,
+    int passkey,
+    int entered,
+  ) async {
+    _plugin.log("Pairing ${device.address}: enter passkey "
+        "${passkey.toString().padLeft(6, '0')} on the device");
   }
 }
