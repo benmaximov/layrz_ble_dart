@@ -50,6 +50,14 @@ abstract class LayrzBlePlatform extends PlatformInterface {
     /// [scanMode] is the Android scan mode: 0 = low power, 1 = balanced,
     /// 2 = low latency; default balanced. Ignored on other platforms.
     int? scanMode,
+
+    /// Android only: report only advertisements with service data for one of
+    /// [serviceDataUuids] (16-bit, e.g. 0xFCD2) or manufacturer data from
+    /// one of [manufacturerIds] (e.g. 0x0BA9). Filtering is done by the
+    /// Bluetooth controller, so unrelated devices cost nothing. Both empty or
+    /// null = no filter.
+    List<int>? serviceDataUuids,
+    List<int>? manufacturerIds,
   }) => throw UnimplementedError('startScan() has not been implemented.');
 
   /// [stopScan] stops scanning for BLE devices.

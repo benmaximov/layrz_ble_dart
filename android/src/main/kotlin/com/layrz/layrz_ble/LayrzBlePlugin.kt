@@ -13,6 +13,8 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
+import android.os.ParcelUuid
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Intent
@@ -85,14 +87,20 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
     /** ScanSettings scan mode requested by the app (default BALANCED). */
     private var scanMode = ScanSettings.SCAN_MODE_BALANCED
 
-    // Android (7+) demotes scans running > 30 min to opportunistic (no
-    // results); restart well before that.
-    private val scanRestartMs = 25L * 60 * 1000
+    /** Hardware scan filters requested by the app (OR-ed); empty = none. */
+    private var scanFilters: List<ScanFilter> = emptyList()
+
+    // Android demotes unfiltered scans that run too long to "opportunistic"
+    // (results only when another app scans): 30 min on older versions,
+    // ~10 min on newer ones (seen on Android 15: "Moving unfiltered scan
+    // client to opportunistic scan" after 10 min). Restarting resets the
+    // timer; the gap is a few ms.
+    private val scanRestartMs = 5L * 60 * 1000
     private val scanHandler = Handler(Looper.getMainLooper())
     private val scanRestart: Runnable = object : Runnable {
         override fun run() {
             if (!isScanning) return
-            Log.d(TAG, "Restarting scan (30 min limit)")
+            Log.d(TAG, "Restarting scan (Android scan time limit)")
             try {
                 bluetooth?.adapter?.bluetoothLeScanner?.stopScan(scanCallback)
             } catch (e: Exception) {
@@ -127,13 +135,19 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         }
         Log.d(
             TAG,
-            "startLeScan: mode=$scanMode" +
+            "startLeScan: mode=$scanMode, filters=${scanFilters.size}" +
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                     ", extAdv=${adapter.isLeExtendedAdvertisingSupported}" +
                         ", codedPhy=${adapter.isLeCodedPhySupported}"
                 else ""
         )
-        adapter.bluetoothLeScanner.startScan(null, builder.build(), scanCallback)
+        // Filters run in the controller: unrelated advertisements never
+        // reach the (main-thread) callback.
+        adapter.bluetoothLeScanner.startScan(
+            scanFilters.ifEmpty { null },
+            builder.build(),
+            scanCallback
+        )
         isScanning = true
         lastOperation = LastOperation.SCAN
         scanHandler.removeCallbacks(scanRestart)
@@ -765,6 +779,18 @@ class LayrzBlePlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             2 -> ScanSettings.SCAN_MODE_LOW_LATENCY
             else -> ScanSettings.SCAN_MODE_BALANCED
         }
+
+        val filters = mutableListOf<ScanFilter>()
+        for (uuid16 in call.argument<List<Int>>("serviceDataUuids") ?: emptyList()) {
+            val uuid = ParcelUuid.fromString(
+                String.format("0000%04x-0000-1000-8000-00805f9b34fb", uuid16 and 0xFFFF)
+            )
+            filters.add(ScanFilter.Builder().setServiceData(uuid, ByteArray(0)).build())
+        }
+        for (id in call.argument<List<Int>>("manufacturerIds") ?: emptyList()) {
+            filters.add(ScanFilter.Builder().setManufacturerData(id, ByteArray(0)).build())
+        }
+        scanFilters = filters
 
         filteredMacAddress = call.argument<String>("macAddress")
         if (filteredMacAddress != null) {

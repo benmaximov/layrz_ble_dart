@@ -97,9 +97,13 @@ class LayrzBleNative extends LayrzBlePlatform {
     String? macAddress,
     List<String>? servicesUuids,
     int? scanMode,
+    List<int>? serviceDataUuids,
+    List<int>? manufacturerIds,
   }) => channel.invokeMethod<bool>('startScan', {
     if (macAddress != null) 'macAddress': macAddress,
     if (scanMode != null) 'scanMode': scanMode,
+    if (serviceDataUuids != null) 'serviceDataUuids': serviceDataUuids,
+    if (manufacturerIds != null) 'manufacturerIds': manufacturerIds,
   });
 
   @override

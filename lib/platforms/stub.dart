@@ -27,6 +27,8 @@ class LayrzBlePluginStub extends LayrzBlePlatform {
     String? macAddress,
     List<String>? servicesUuids,
     int? scanMode,
+    List<int>? serviceDataUuids,
+    List<int>? manufacturerIds,
   }) => throw UnimplementedError('startScan() has not been implemented.');
 
   @override
