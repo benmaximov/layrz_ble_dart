@@ -133,13 +133,12 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
       return null;
     }
 
-    final service = _connectedDevice!.gattServices.firstOrNull;
-    if (service == null) {
-      log("Service not found");
-      return null;
-    }
-
-    final characteristic = service.characteristics.firstOrNull;
+    // The MTU is per connection; any characteristic reports it. The first
+    // service may have none, so look through all of them.
+    final characteristic =
+        _connectedDevice!.gattServices
+            .expand((s) => s.characteristics)
+            .firstOrNull;
     if (characteristic == null) {
       log("Characteristic not found");
       return null;
@@ -164,6 +163,19 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
 
     final device = _devices[macAddress.toLowerCase()]!;
     await device.connect();
+
+    // BlueZ can report the connection before GATT discovery has finished.
+    // Until then the services and the MTU are missing or incomplete.
+    if (!await _waitServicesResolved(device)) {
+      log("Services not resolved: $macAddress");
+      try {
+        await device.disconnect();
+      } catch (e) {
+        log("Error disconnecting: $e");
+      }
+      return false;
+    }
+
     _connectedDevice = device;
     _services.clear();
 
@@ -232,6 +244,20 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     return true;
   }
 
+  /// Waits until BlueZ has discovered the GATT database of [device]. False if
+  /// the link drops or [timeout] expires first.
+  Future<bool> _waitServicesResolved(
+    BlueZDevice device, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    final sw = Stopwatch()..start();
+    while (!device.servicesResolved) {
+      if (!device.connected || sw.elapsed >= timeout) return false;
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    return true;
+  }
+
   @override
   Future<bool?> pair({required String macAddress}) async {
     if (_client == null) {
@@ -250,6 +276,9 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     try {
       await _ensureAgent();
       if (!device.paired) {
+        // A device left trusted without a bond (lost or removed keys) cannot
+        // be paired again until the trust is cleared.
+        if (device.trusted) await device.setTrusted(false);
         try {
           await device.pair();
         } on BlueZAlreadyExistsException {
@@ -305,6 +334,9 @@ class LayrzBlePluginLinux extends LayrzBlePlatform {
     if (adapter == null) return false;
 
     try {
+      // Drop the trust first, so it cannot outlive the bond if the removal
+      // fails.
+      if (device.trusted) await device.setTrusted(false);
       // Removing the device from BlueZ deletes its bonding keys.
       await adapter.removeDevice(device);
       _devices.remove(macAddress.toLowerCase());
